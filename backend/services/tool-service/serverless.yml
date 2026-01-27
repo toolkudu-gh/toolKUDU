@@ -1,0 +1,157 @@
+service: toolkudu-tool-service
+
+plugins:
+  - serverless-plugin-typescript
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 256
+  timeout: 10
+  environment:
+    STAGE: ${self:provider.stage}
+    DB_HOST: ${cf:toolkudu-infrastructure-${self:provider.stage}.RDSEndpoint, env:DB_HOST}
+    DB_PORT: ${cf:toolkudu-infrastructure-${self:provider.stage}.RDSPort, '5432'}
+    DB_NAME: toolkudu
+    DB_USER: ${env:DB_USER, 'toolkudu_admin'}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    COGNITO_USER_POOL_ID: ${cf:toolkudu-infrastructure-${self:provider.stage}.UserPoolId, env:COGNITO_USER_POOL_ID}
+    COGNITO_CLIENT_ID: ${cf:toolkudu-infrastructure-${self:provider.stage}.UserPoolClientId, env:COGNITO_CLIENT_ID}
+    S3_BUCKET: ${cf:toolkudu-infrastructure-${self:provider.stage}.ImagesBucketName, env:S3_BUCKET}
+  vpc:
+    securityGroupIds:
+      - ${cf:toolkudu-infrastructure-${self:provider.stage}.LambdaSecurityGroupId, env:LAMBDA_SG_ID}
+    subnetIds: ${env:SUBNET_IDS, ''}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource:
+            - ${cf:toolkudu-infrastructure-${self:provider.stage}.ImagesBucketArn, 'arn:aws:s3:::*'}/*
+
+functions:
+  # Toolbox endpoints
+  getToolboxes:
+    handler: src/handlers/toolboxes.getToolboxes
+    events:
+      - http:
+          path: /toolboxes
+          method: get
+          cors: true
+
+  createToolbox:
+    handler: src/handlers/toolboxes.createToolbox
+    events:
+      - http:
+          path: /toolboxes
+          method: post
+          cors: true
+
+  getToolbox:
+    handler: src/handlers/toolboxes.getToolbox
+    events:
+      - http:
+          path: /toolboxes/{id}
+          method: get
+          cors: true
+
+  updateToolbox:
+    handler: src/handlers/toolboxes.updateToolbox
+    events:
+      - http:
+          path: /toolboxes/{id}
+          method: put
+          cors: true
+
+  deleteToolbox:
+    handler: src/handlers/toolboxes.deleteToolbox
+    events:
+      - http:
+          path: /toolboxes/{id}
+          method: delete
+          cors: true
+
+  # Tool endpoints
+  getTools:
+    handler: src/handlers/tools.getTools
+    events:
+      - http:
+          path: /toolboxes/{toolboxId}/tools
+          method: get
+          cors: true
+
+  createTool:
+    handler: src/handlers/tools.createTool
+    events:
+      - http:
+          path: /toolboxes/{toolboxId}/tools
+          method: post
+          cors: true
+
+  getTool:
+    handler: src/handlers/tools.getTool
+    events:
+      - http:
+          path: /tools/{id}
+          method: get
+          cors: true
+
+  updateTool:
+    handler: src/handlers/tools.updateTool
+    events:
+      - http:
+          path: /tools/{id}
+          method: put
+          cors: true
+
+  deleteTool:
+    handler: src/handlers/tools.deleteTool
+    events:
+      - http:
+          path: /tools/{id}
+          method: delete
+          cors: true
+
+  # Tool images
+  getUploadUrl:
+    handler: src/handlers/images.getUploadUrl
+    events:
+      - http:
+          path: /tools/{id}/images/upload-url
+          method: post
+          cors: true
+
+  addImage:
+    handler: src/handlers/images.addImage
+    events:
+      - http:
+          path: /tools/{id}/images
+          method: post
+          cors: true
+
+  deleteImage:
+    handler: src/handlers/images.deleteImage
+    events:
+      - http:
+          path: /tools/{id}/images/{imageId}
+          method: delete
+          cors: true
+
+  # Get user's toolboxes (public endpoint for viewing other users)
+  getUserToolboxes:
+    handler: src/handlers/toolboxes.getUserToolboxes
+    events:
+      - http:
+          path: /users/{userId}/toolboxes
+          method: get
+          cors: true
+
+custom:
+  serverless-plugin-typescript:
+    tsConfigFileLocation: './tsconfig.json'

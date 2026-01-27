@@ -1,0 +1,154 @@
+service: toolkudu-user-service
+
+plugins:
+  - serverless-plugin-typescript
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 256
+  timeout: 10
+  environment:
+    STAGE: ${self:provider.stage}
+    DB_HOST: ${cf:toolkudu-infrastructure-${self:provider.stage}.RDSEndpoint, env:DB_HOST}
+    DB_PORT: ${cf:toolkudu-infrastructure-${self:provider.stage}.RDSPort, '5432'}
+    DB_NAME: toolkudu
+    DB_USER: ${env:DB_USER, 'toolkudu_admin'}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    COGNITO_USER_POOL_ID: ${cf:toolkudu-infrastructure-${self:provider.stage}.UserPoolId, env:COGNITO_USER_POOL_ID}
+    COGNITO_CLIENT_ID: ${cf:toolkudu-infrastructure-${self:provider.stage}.UserPoolClientId, env:COGNITO_CLIENT_ID}
+  vpc:
+    securityGroupIds:
+      - ${cf:toolkudu-infrastructure-${self:provider.stage}.LambdaSecurityGroupId, env:LAMBDA_SG_ID}
+    subnetIds: ${env:SUBNET_IDS, ''}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminUpdateUserAttributes
+          Resource: ${cf:toolkudu-infrastructure-${self:provider.stage}.UserPoolArn, '*'}
+
+functions:
+  # Profile endpoints
+  getProfile:
+    handler: src/handlers/profile.getProfile
+    events:
+      - http:
+          path: /users/me
+          method: get
+          cors: true
+
+  updateProfile:
+    handler: src/handlers/profile.updateProfile
+    events:
+      - http:
+          path: /users/me
+          method: put
+          cors: true
+
+  getUserById:
+    handler: src/handlers/profile.getUserById
+    events:
+      - http:
+          path: /users/{id}
+          method: get
+          cors: true
+
+  searchUsers:
+    handler: src/handlers/profile.searchUsers
+    events:
+      - http:
+          path: /users/search
+          method: get
+          cors: true
+
+  # Follow endpoints
+  followUser:
+    handler: src/handlers/follows.followUser
+    events:
+      - http:
+          path: /users/{id}/follow
+          method: post
+          cors: true
+
+  unfollowUser:
+    handler: src/handlers/follows.unfollowUser
+    events:
+      - http:
+          path: /users/{id}/follow
+          method: delete
+          cors: true
+
+  getFollowers:
+    handler: src/handlers/follows.getFollowers
+    events:
+      - http:
+          path: /users/me/followers
+          method: get
+          cors: true
+
+  getFollowing:
+    handler: src/handlers/follows.getFollowing
+    events:
+      - http:
+          path: /users/me/following
+          method: get
+          cors: true
+
+  # Buddy endpoints
+  sendBuddyRequest:
+    handler: src/handlers/buddies.sendBuddyRequest
+    events:
+      - http:
+          path: /users/{id}/buddy-request
+          method: post
+          cors: true
+
+  respondToBuddyRequest:
+    handler: src/handlers/buddies.respondToBuddyRequest
+    events:
+      - http:
+          path: /buddy-requests/{id}
+          method: put
+          cors: true
+
+  getBuddyRequests:
+    handler: src/handlers/buddies.getBuddyRequests
+    events:
+      - http:
+          path: /buddy-requests
+          method: get
+          cors: true
+
+  getBuddies:
+    handler: src/handlers/buddies.getBuddies
+    events:
+      - http:
+          path: /users/me/buddies
+          method: get
+          cors: true
+
+  removeBuddy:
+    handler: src/handlers/buddies.removeBuddy
+    events:
+      - http:
+          path: /users/me/buddies/{id}
+          method: delete
+          cors: true
+
+  # User sync (called after Cognito registration)
+  syncUser:
+    handler: src/handlers/sync.syncUser
+    events:
+      - http:
+          path: /users/sync
+          method: post
+          cors: true
+
+custom:
+  serverless-plugin-typescript:
+    tsConfigFileLocation: './tsconfig.json'

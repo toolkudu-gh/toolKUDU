@@ -1,0 +1,213 @@
+service: toolkudu-infrastructure
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+
+resources:
+  Resources:
+    # Cognito User Pool
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: toolkudu-users-${self:provider.stage}
+        AutoVerifiedAttributes:
+          - email
+        UsernameAttributes:
+          - email
+        UsernameConfiguration:
+          CaseSensitive: false
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireUppercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Required: true
+            Mutable: true
+          - Name: preferred_username
+            AttributeDataType: String
+            Required: false
+            Mutable: true
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
+
+    # Cognito User Pool Client
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: toolkudu-app-${self:provider.stage}
+        UserPoolId: !Ref CognitoUserPool
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        PreventUserExistenceErrors: ENABLED
+        AccessTokenValidity: 1
+        IdTokenValidity: 1
+        RefreshTokenValidity: 30
+        TokenValidityUnits:
+          AccessToken: hours
+          IdToken: hours
+          RefreshToken: days
+
+    # S3 Bucket for Tool Images
+    ToolImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: toolkudu-images-${self:provider.stage}-${aws:accountId}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+              AllowedOrigins:
+                - '*'
+              MaxAge: 3600
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+
+    # S3 Bucket Policy for CloudFront (optional, for CDN)
+    ToolImagesBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref ToolImagesBucket
+        PolicyDocument:
+          Statement:
+            - Sid: AllowLambdaAccess
+              Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource: !Sub ${ToolImagesBucket.Arn}/*
+
+    # VPC for RDS (simplified - uses default VPC in production, create proper VPC)
+    # For production, create proper VPC with private subnets
+
+    # Security Group for Lambda to RDS
+    LambdaSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for Lambda functions
+        GroupName: toolkudu-lambda-sg-${self:provider.stage}
+        VpcId: ${env:VPC_ID, ''}
+        SecurityGroupEgress:
+          - IpProtocol: '-1'
+            CidrIp: 0.0.0.0/0
+
+    # Security Group for RDS
+    RDSSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for RDS
+        GroupName: toolkudu-rds-sg-${self:provider.stage}
+        VpcId: ${env:VPC_ID, ''}
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+    # RDS Subnet Group
+    RDSSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: Subnet group for ToolKUDU RDS
+        DBSubnetGroupName: toolkudu-rds-subnet-${self:provider.stage}
+        SubnetIds: ${env:SUBNET_IDS, ''}
+
+    # RDS PostgreSQL Instance
+    RDSPostgres:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceIdentifier: toolkudu-db-${self:provider.stage}
+        DBInstanceClass: db.t3.micro
+        Engine: postgres
+        EngineVersion: '15.4'
+        AllocatedStorage: 20
+        StorageType: gp3
+        MasterUsername: ${env:DB_MASTER_USER, 'toolkudu_admin'}
+        MasterUserPassword: ${env:DB_MASTER_PASSWORD}
+        DBName: toolkudu
+        VPCSecurityGroups:
+          - !GetAtt RDSSecurityGroup.GroupId
+        DBSubnetGroupName: !Ref RDSSubnetGroup
+        PubliclyAccessible: false
+        MultiAZ: false
+        DeletionProtection: false
+        BackupRetentionPeriod: 7
+        EnablePerformanceInsights: false
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+
+    # SNS Topic for Notifications
+    NotificationTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: toolkudu-notifications-${self:provider.stage}
+
+  Outputs:
+    UserPoolId:
+      Value: !Ref CognitoUserPool
+      Export:
+        Name: ToolKUDU-UserPoolId-${self:provider.stage}
+
+    UserPoolClientId:
+      Value: !Ref CognitoUserPoolClient
+      Export:
+        Name: ToolKUDU-UserPoolClientId-${self:provider.stage}
+
+    UserPoolArn:
+      Value: !GetAtt CognitoUserPool.Arn
+      Export:
+        Name: ToolKUDU-UserPoolArn-${self:provider.stage}
+
+    ImagesBucketName:
+      Value: !Ref ToolImagesBucket
+      Export:
+        Name: ToolKUDU-ImagesBucket-${self:provider.stage}
+
+    ImagesBucketArn:
+      Value: !GetAtt ToolImagesBucket.Arn
+      Export:
+        Name: ToolKUDU-ImagesBucketArn-${self:provider.stage}
+
+    RDSEndpoint:
+      Value: !GetAtt RDSPostgres.Endpoint.Address
+      Export:
+        Name: ToolKUDU-RDSEndpoint-${self:provider.stage}
+
+    RDSPort:
+      Value: !GetAtt RDSPostgres.Endpoint.Port
+      Export:
+        Name: ToolKUDU-RDSPort-${self:provider.stage}
+
+    LambdaSecurityGroupId:
+      Value: !GetAtt LambdaSecurityGroup.GroupId
+      Export:
+        Name: ToolKUDU-LambdaSG-${self:provider.stage}
+
+    NotificationTopicArn:
+      Value: !Ref NotificationTopic
+      Export:
+        Name: ToolKUDU-NotificationTopic-${self:provider.stage}

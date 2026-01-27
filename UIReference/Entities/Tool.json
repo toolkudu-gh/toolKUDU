@@ -1,0 +1,73 @@
+{
+  "name": "Tool",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the tool"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the tool"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "power_tools",
+        "hand_tools",
+        "garden",
+        "automotive",
+        "painting",
+        "plumbing",
+        "electrical",
+        "cleaning",
+        "other"
+      ],
+      "description": "Tool category"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Image of the tool"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "good",
+        "fair"
+      ],
+      "description": "Current condition of the tool"
+    },
+    "availability": {
+      "type": "string",
+      "enum": [
+        "available",
+        "borrowed",
+        "unavailable"
+      ],
+      "default": "available"
+    },
+    "location": {
+      "type": "string",
+      "description": "General area/neighborhood"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "deposit_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_borrow_days": {
+      "type": "number",
+      "default": 7
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ]
+}

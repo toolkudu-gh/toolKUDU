@@ -1,0 +1,48 @@
+{
+  "name": "BorrowRequest",
+  "type": "object",
+  "properties": {
+    "tool_id": {
+      "type": "string",
+      "description": "Reference to the tool"
+    },
+    "tool_name": {
+      "type": "string"
+    },
+    "borrower_name": {
+      "type": "string"
+    },
+    "borrower_email": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message to the tool owner"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "declined",
+        "returned"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "tool_id",
+    "borrower_email"
+  ]
+}
