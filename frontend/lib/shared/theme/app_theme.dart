@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Shadcn/ui-inspired color palette - Sage green theme
+  // Custom color palette
   static const Color primaryColor = Color(0xFF6B8E7B); // Sage green
   static const Color primaryHover = Color(0xFF5A7A69); // Darker sage
-  static const Color secondaryColor = Color(0xFF8BA898); // Lighter sage
+  static const Color accentColor = Color(0xFFC77B58); // Terracotta
+  static const Color secondaryColor = Color(0xFFC77B58); // Terracotta accent
 
   // Status colors
   static const Color successColor = Color(0xFF10B981); // Emerald
@@ -15,21 +16,21 @@ class AppTheme {
   static const Color errorColor = Color(0xFFEF4444); // Red
   static const Color errorLight = Color(0xFFFEE2E2);
 
-  // Light theme - Warm stone palette
-  static const Color backgroundLight = Color(0xFFFAFAF9); // Stone-50
+  // Light theme - Custom warm palette
+  static const Color backgroundLight = Color(0xFFFAFAF8); // Warm white
   static const Color surfaceLight = Color(0xFFFFFFFF); // White
-  static const Color textPrimaryLight = Color(0xFF292524); // Stone-800
+  static const Color textPrimaryLight = Color(0xFF2D3436); // Charcoal
   static const Color textSecondaryLight = Color(0xFF57534E); // Stone-600
   static const Color textMutedLight = Color(0xFF78716C); // Stone-500
   static const Color borderLight = Color(0xFFE7E5E4); // Stone-200
 
-  // Dark theme - Deep stone
-  static const Color backgroundDark = Color(0xFF1C1917); // Stone-900
-  static const Color surfaceDark = Color(0xFF292524); // Stone-800
-  static const Color textPrimaryDark = Color(0xFFFAFAF9); // Stone-50
-  static const Color textSecondaryDark = Color(0xFFA8A29E); // Stone-400
-  static const Color textMutedDark = Color(0xFF78716C); // Stone-500
-  static const Color borderDark = Color(0xFF44403C); // Stone-700
+  // Dark theme - Custom warm palette (dark variant)
+  static const Color backgroundDark = Color(0xFF1A1D1E); // Dark charcoal
+  static const Color surfaceDark = Color(0xFF2D3436); // Charcoal (matching light text)
+  static const Color textPrimaryDark = Color(0xFFFAFAF8); // Warm white (matching light bg)
+  static const Color textSecondaryDark = Color(0xFFB8C4C2); // Muted sage
+  static const Color textMutedDark = Color(0xFF8B9A96); // Darker muted sage
+  static const Color borderDark = Color(0xFF3D4547); // Lighter charcoal
 
   // Border radii
   static const double radiusSm = 6.0;

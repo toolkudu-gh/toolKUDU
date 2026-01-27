@@ -7,6 +7,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_dialog.dart';
+import '../../../core/providers/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -161,8 +162,8 @@ class SettingsScreen extends ConsumerWidget {
                           isDark,
                           icon: Icons.palette_outlined,
                           title: 'Theme',
-                          subtitle: 'System',
-                          onTap: () => _showThemeDialog(context, isDark),
+                          subtitle: _getThemeLabel(ref.watch(themeProvider)),
+                          onTap: () => _showThemeDialog(context, isDark, ref),
                           isFirst: true,
                         ),
                         _buildDivider(isDark),
@@ -370,18 +371,31 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showThemeDialog(BuildContext context, bool isDark) {
+  String _getThemeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return 'System';
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+    }
+  }
+
+  void _showThemeDialog(BuildContext context, bool isDark, WidgetRef ref) {
+    final currentTheme = ref.read(themeProvider);
+
     AppBottomSheet.show(
       context: context,
       title: 'Choose Theme',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildThemeOption(context, isDark, 'System', Icons.settings_outlined, true),
+          _buildThemeOption(context, isDark, 'System', Icons.settings_outlined, ThemeMode.system, currentTheme, ref),
           const SizedBox(height: 8),
-          _buildThemeOption(context, isDark, 'Light', Icons.light_mode_outlined, false),
+          _buildThemeOption(context, isDark, 'Light', Icons.light_mode_outlined, ThemeMode.light, currentTheme, ref),
           const SizedBox(height: 8),
-          _buildThemeOption(context, isDark, 'Dark', Icons.dark_mode_outlined, false),
+          _buildThemeOption(context, isDark, 'Dark', Icons.dark_mode_outlined, ThemeMode.dark, currentTheme, ref),
         ],
       ),
     );
@@ -392,11 +406,18 @@ class SettingsScreen extends ConsumerWidget {
     bool isDark,
     String title,
     IconData icon,
-    bool isSelected,
+    ThemeMode mode,
+    ThemeMode currentTheme,
+    WidgetRef ref,
   ) {
+    final isSelected = mode == currentTheme;
+
     return AppCard(
       padding: const EdgeInsets.all(14),
-      onTap: () => Navigator.pop(context),
+      onTap: () {
+        ref.read(themeProvider.notifier).setTheme(mode);
+        Navigator.of(context, rootNavigator: true).pop();
+      },
       backgroundColor: isSelected
           ? AppTheme.primaryColor.withOpacity(isDark ? 0.15 : 0.08)
           : null,

@@ -303,6 +303,7 @@ class AppBottomSheet extends StatelessWidget {
       context: context,
       isScrollControlled: isScrollControlled,
       backgroundColor: Colors.transparent,
+      useRootNavigator: true,
       builder: (context) => AppBottomSheet(
         title: title,
         actions: actions,
@@ -408,6 +409,11 @@ class AppBottomSheet extends StatelessWidget {
                   }).toList(),
                 ),
               ),
+            )
+          else
+            SafeArea(
+              top: false,
+              child: const SizedBox(height: 24),
             ),
         ],
       ),
