@@ -37,11 +37,30 @@ Located in `frontend/lib/core/utils/feature_flags.dart`:
 - `enableSharing`: Enabled - Tool sharing/lending
 - `enableUserSearch`: Enabled - Search for users
 
+## Navigation Structure
+
+### Mobile/Tablet Layout
+- **Bottom Nav Tabs**: Home, Search, Buddies, Share
+- **Account Icon** (top-right): Opens sliding drawer from right
+- **Account Drawer** (`frontend/lib/shared/widgets/account_drawer.dart`):
+  - User avatar + name
+  - View Profile → `/profile`
+  - Edit Profile → `/profile/edit`
+  - Settings → `/profile/settings`
+  - Sign Out
+
+### Desktop Layout (>=900px)
+- **Top Header**: Logo, Home, Search, Buddies, Share nav links
+- **Account Dropdown** (right): View Profile, Edit Profile, Settings
+
+### Deep Links
+- `/u/:username` - Profile sharing link (e.g., `https://toolkudu.app/u/johndoe`)
+
 ## Responsive Layout
 Located in `frontend/lib/core/utils/responsive.dart`:
-- **Mobile** (<600px): Bottom navigation with 4 tabs
-- **Tablet** (600-899px): Bottom navigation
-- **Desktop** (>=900px): Top header navigation with logo, nav links, user dropdown
+- **Mobile** (<600px): Bottom navigation with 4 tabs + account icon
+- **Tablet** (600-899px): Bottom navigation + account icon
+- **Desktop** (>=900px): Top header navigation with logo, nav links, account dropdown
 
 ## Terminology
 - Use **"Tool Buddies"** instead of "Followers/Following"
@@ -55,7 +74,21 @@ Located in `frontend/lib/core/utils/funny_messages.dart`:
 - Use `FunnySnackBar` widget for success/error notifications
 - Use `FunnyMessages` class for empty states and dialogs
 
+## Username System
+- **Uniqueness**: Usernames must be unique (checked during registration)
+- **Validation**: 3+ chars, alphanumeric + underscore only
+- **Availability Check**: Debounced API call with checkmark/X indicator
+- **Suggestions**: When taken, shows 3 alternatives (e.g., `john_1`, `john_tools`, `john_2024`)
+- **Auto-generation**: Google/Magic Link users get username from email prefix
+- **Change Cooldown**: Can edit username once per 30 days (Edit Profile screen)
+
+## Buddy System
+- **Borrow Button**: Shows on available tools when viewing a buddy's profile (not just in borrow mode)
+- **Share Profile**: Button on profiles to copy/share profile link
+- **Quick Request**: Share tab FAB offers "From My Buddies" or "Search for Someone"
+
 ## UI Components
 - **Glassmorphism**: Subtle blur effects on nav bars and optionally on cards (`enableGlass: true`)
 - **Desktop Header**: `frontend/lib/app/desktop_header.dart` - Top nav for web
+- **Account Drawer**: `frontend/lib/shared/widgets/account_drawer.dart` - Sliding drawer for mobile
 - **Responsive Container**: Wraps content with max-width constraints for desktop
