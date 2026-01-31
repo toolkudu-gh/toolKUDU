@@ -8,6 +8,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_input.dart';
+import '../../../shared/widgets/funny_snackbar.dart';
 
 class AddToolboxScreen extends ConsumerStatefulWidget {
   const AddToolboxScreen({super.key});
@@ -74,6 +75,7 @@ class _AddToolboxScreenState extends ConsumerState<AddToolboxScreen> {
     await Future.delayed(const Duration(seconds: 1));
 
     if (mounted) {
+      FunnySnackBar.toolboxCreated(context);
       context.go('/home');
     }
   }

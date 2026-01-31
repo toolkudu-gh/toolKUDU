@@ -13,6 +13,7 @@ import '../../../shared/widgets/stat_card.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/funny_snackbar.dart';
 import '../../share/widgets/borrow_request_dialog.dart';
 
 class UserProfileScreen extends ConsumerWidget {
@@ -157,52 +158,37 @@ class UserProfileScreen extends ConsumerWidget {
 
                             const SizedBox(height: 20),
 
-                            // Stats
+                            // Stats - Tool Buddies terminology
                             StatRow(
                               stats: [
                                 StatItem(
                                   value: '${user.followersCount}',
-                                  label: 'Followers',
+                                  label: 'Tool Buddies',
                                 ),
                                 StatItem(
                                   value: '${user.followingCount}',
-                                  label: 'Following',
+                                  label: 'Toolboxes',
                                 ),
                               ],
                             ),
 
                             if (!borrowMode) ...[
                               const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: AppButton(
-                                      label: user.isFollowing == true ? 'Following' : 'Follow',
-                                      icon: user.isFollowing == true
-                                          ? Icons.check
-                                          : Icons.person_add_outlined,
-                                      variant: user.isFollowing == true
-                                          ? AppButtonVariant.outline
-                                          : AppButtonVariant.primary,
-                                      onPressed: () {
-                                        // TODO: Follow/Unfollow
-                                      },
-                                      fullWidth: true,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: AppButton(
-                                      label: user.isBuddy == true ? 'Buddies' : 'Add Buddy',
-                                      icon: Icons.people_outlined,
-                                      variant: AppButtonVariant.outline,
-                                      onPressed: () {
-                                        // TODO: Add buddy
-                                      },
-                                      fullWidth: true,
-                                    ),
-                                  ),
-                                ],
+                              SizedBox(
+                                width: double.infinity,
+                                child: AppButton(
+                                  label: user.isBuddy == true ? 'Tool Buddies' : 'Add as Tool Buddy',
+                                  icon: user.isBuddy == true
+                                      ? Icons.check
+                                      : Icons.person_add_outlined,
+                                  variant: user.isBuddy == true
+                                      ? AppButtonVariant.outline
+                                      : AppButtonVariant.primary,
+                                  onPressed: () {
+                                    // TODO: Add/Remove buddy
+                                  },
+                                  fullWidth: true,
+                                ),
                               ),
                             ],
                           ],
@@ -508,20 +494,13 @@ class UserProfileScreen extends ConsumerWidget {
 
       if (context.mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Borrow request sent!'),
-              backgroundColor: AppTheme.successColor,
-            ),
+          FunnySnackBar.showSuccess(
+            context,
+            customMessage: "Request sent! Now we wait... like watching paint dry, but more exciting!",
           );
           context.go('/share');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Failed to send request. Please try again.'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
+          FunnySnackBar.networkError(context);
         }
       }
     }

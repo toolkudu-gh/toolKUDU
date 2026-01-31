@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../core/models/user.dart';
+import '../../../core/utils/funny_messages.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   final bool borrowMode;
@@ -178,7 +179,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (_searchResults.isEmpty) {
       return EmptyState.noResults(
         title: 'No users found',
-        description: 'Try a different search term',
+        description: FunnyMessages.noSearchResults,
       ).animate().fadeIn(duration: 300.ms);
     }
 

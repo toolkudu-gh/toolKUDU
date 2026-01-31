@@ -156,12 +156,12 @@ class ProfileScreen extends ConsumerWidget {
 
                     const SizedBox(height: 20),
 
-                    // Stats
+                    // Stats - Tool Buddies terminology
                     StatRow(
                       stats: [
                         StatItem(
                           value: '${user?.followersCount ?? 0}',
-                          label: 'Followers',
+                          label: 'Tool Buddies',
                         ),
                         StatItem(
                           value: '${user?.followingCount ?? 0}',
@@ -360,14 +360,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showSignOutConfirmation(BuildContext context, WidgetRef ref) async {
-    final confirmed = await AppDialog.confirm(
-      context: context,
-      title: 'Sign Out',
-      description: 'Are you sure you want to sign out?',
-      confirmLabel: 'Sign Out',
-      cancelLabel: 'Cancel',
-      isDestructive: true,
-    );
+    final confirmed = await AppDialog.confirmSignOut(context: context);
 
     if (confirmed == true) {
       await ref.read(authStateProvider.notifier).signOut();

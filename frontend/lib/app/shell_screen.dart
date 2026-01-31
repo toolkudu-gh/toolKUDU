@@ -1,7 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../shared/theme/app_theme.dart';
+import '../core/utils/responsive.dart';
+import 'desktop_header.dart';
 
 class ShellScreen extends StatefulWidget {
   final Widget child;
@@ -16,6 +19,21 @@ class _ShellScreenState extends State<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop = Responsive.isDesktop(context);
+
+    // Desktop layout with top header
+    if (isDesktop) {
+      return Scaffold(
+        body: Column(
+          children: [
+            const DesktopHeader(),
+            Expanded(child: widget.child),
+          ],
+        ),
+      );
+    }
+
+    // Mobile/tablet layout with bottom navigation
     final selectedIndex = _calculateSelectedIndex(context);
 
     return Scaffold(
@@ -70,19 +88,14 @@ class _ShellScreenState extends State<ShellScreen> {
                       isSelected: selectedIndex == 2,
                       onTap: () => _onItemTapped(2, context),
                     ),
-                    _NavItem(
-                      icon: Icons.location_on_outlined,
-                      selectedIcon: Icons.location_on_rounded,
-                      label: 'Find',
-                      isSelected: selectedIndex == 3,
-                      onTap: () => _onItemTapped(3, context),
-                    ),
+                    // Find tab hidden - GPS feature disabled
+                    // Keep Profile as the 4th tab
                     _NavItem(
                       icon: Icons.person_outline_rounded,
                       selectedIcon: Icons.person_rounded,
                       label: 'Profile',
-                      isSelected: selectedIndex == 4,
-                      onTap: () => _onItemTapped(4, context),
+                      isSelected: selectedIndex == 3,
+                      onTap: () => _onItemTapped(3, context),
                     ),
                   ],
                 ),
@@ -100,8 +113,8 @@ class _ShellScreenState extends State<ShellScreen> {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/search')) return 1;
     if (location.startsWith('/share')) return 2;
-    if (location.startsWith('/find')) return 3;
-    if (location.startsWith('/profile')) return 4;
+    // Find tab removed - skip index 3
+    if (location.startsWith('/profile')) return 3;
 
     return 0;
   }
@@ -118,9 +131,6 @@ class _ShellScreenState extends State<ShellScreen> {
         context.go('/share');
         break;
       case 3:
-        context.go('/find');
-        break;
-      case 4:
         context.go('/profile');
         break;
     }
@@ -171,6 +181,7 @@ class _NavItemState extends State<_NavItem> with SingleTickerProviderStateMixin 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = AppTheme.getPrimaryColor(context);
 
     return GestureDetector(
       onTapDown: (_) => _controller.forward(),
@@ -196,7 +207,7 @@ class _NavItemState extends State<_NavItem> with SingleTickerProviderStateMixin 
           ),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.1)
+                ? primaryColor.withOpacity(isDark ? 0.2 : 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(AppTheme.radius2xl),
           ),
@@ -207,7 +218,7 @@ class _NavItemState extends State<_NavItem> with SingleTickerProviderStateMixin 
                 widget.isSelected ? widget.selectedIcon : widget.icon,
                 size: 22,
                 color: widget.isSelected
-                    ? AppTheme.primaryColor
+                    ? primaryColor
                     : (isDark
                         ? AppTheme.textMutedDark
                         : AppTheme.textMutedLight),
@@ -223,7 +234,7 @@ class _NavItemState extends State<_NavItem> with SingleTickerProviderStateMixin 
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.primaryColor,
+                            color: primaryColor,
                           ),
                         ),
                       )
@@ -267,8 +278,9 @@ class GlassmorphicAppBar extends StatelessWidget implements PreferredSizeWidget 
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: (isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight)
-                .withOpacity(0.8),
+            color: isDark
+                ? AppTheme.glassDark
+                : AppTheme.glassLight,
             border: Border(
               bottom: BorderSide(
                 color: isDark ? AppTheme.borderDark : AppTheme.borderLight,

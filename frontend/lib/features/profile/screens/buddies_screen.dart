@@ -7,7 +7,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/funny_snackbar.dart';
 
 class BuddiesScreen extends ConsumerWidget {
   const BuddiesScreen({super.key});
@@ -35,7 +35,7 @@ class BuddiesScreen extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Buddies & Followers',
+                        'Tool Buddies',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -84,9 +84,9 @@ class BuddiesScreen extends ConsumerWidget {
                     ),
                     dividerColor: Colors.transparent,
                     tabs: const [
-                      Tab(text: 'Buddies'),
-                      Tab(text: 'Followers'),
-                      Tab(text: 'Following'),
+                      Tab(text: 'My Buddies'),
+                      Tab(text: 'Requests'),
+                      Tab(text: 'Sent'),
                     ],
                   ),
                 ),
@@ -120,11 +120,8 @@ class BuddiesScreen extends ConsumerWidget {
     });
 
     if (buddies.isEmpty) {
-      return EmptyState(
-        icon: Icons.people_outline,
-        title: 'No buddies yet',
-        description: 'Add buddies to share your tools with them',
-        actionLabel: 'Find Buddies',
+      return EmptyState.noBuddies(
+        actionLabel: 'Find Tool Buddies',
         onAction: () => context.go('/search'),
       );
     }
@@ -209,8 +206,8 @@ class BuddiesScreen extends ConsumerWidget {
     if (followers.isEmpty) {
       return const EmptyState(
         icon: Icons.people_outline,
-        title: 'No followers yet',
-        description: 'Share your profile to get followers',
+        title: 'No buddy requests',
+        description: 'When someone wants to be your Tool Buddy, they\'ll appear here',
       );
     }
 
@@ -231,29 +228,21 @@ class BuddiesScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AppButton(
-                label: isFollowing ? 'Following' : 'Follow',
-                variant: isFollowing
-                    ? AppButtonVariant.outline
-                    : AppButtonVariant.primary,
+                label: 'Accept',
+                variant: AppButtonVariant.primary,
                 size: AppButtonSize.sm,
                 onPressed: () {
-                  // TODO: Follow/Unfollow
+                  // TODO: Accept buddy request
+                  FunnySnackBar.buddyAdded(context);
                 },
               ),
               const SizedBox(width: 8),
               AppButton(
-                label: 'Add',
-                icon: Icons.person_add_outlined,
+                label: 'Decline',
                 variant: AppButtonVariant.ghost,
                 size: AppButtonSize.sm,
                 onPressed: () {
-                  // TODO: Send buddy request
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Buddy request sent!'),
-                      backgroundColor: AppTheme.successColor,
-                    ),
-                  );
+                  // TODO: Decline buddy request
                 },
               ),
             ],
@@ -273,9 +262,9 @@ class BuddiesScreen extends ConsumerWidget {
     if (following.isEmpty) {
       return EmptyState(
         icon: Icons.people_outline,
-        title: 'Not following anyone',
-        description: 'Follow people to see their public tools',
-        actionLabel: 'Find People',
+        title: 'No sent requests',
+        description: 'Your pending buddy requests will appear here',
+        actionLabel: 'Find Tool Buddies',
         onAction: () => context.go('/search'),
       );
     }
@@ -292,11 +281,11 @@ class BuddiesScreen extends ConsumerWidget {
           username: user['username']! as String,
           index: index,
           trailing: AppButton(
-            label: 'Unfollow',
+            label: 'Cancel',
             variant: AppButtonVariant.outline,
             size: AppButtonSize.sm,
             onPressed: () {
-              // TODO: Unfollow
+              // TODO: Cancel buddy request
             },
           ),
         );

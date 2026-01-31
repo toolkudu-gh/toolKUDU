@@ -21,6 +21,7 @@ import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/buddies_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../core/providers/auth_provider.dart';
+import '../core/utils/feature_flags.dart';
 import 'shell_screen.dart';
 
 // Navigation keys for shell routes
@@ -69,6 +70,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // If logged in and on auth routes, redirect to home
       if (isLoggedIn && isAuthRoute) {
+        return '/home';
+      }
+
+      // Guard Find Tool routes based on feature flag
+      if (state.matchedLocation.startsWith('/find') && !FeatureFlags.enableFindTool) {
         return '/home';
       }
 
@@ -178,23 +184,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
 
-          // Find My Tool Tab
-          GoRoute(
-            path: '/find',
-            name: 'find',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: FindToolScreen(),
-            ),
-            routes: [
-              GoRoute(
-                path: 'add-tracker/:toolId',
-                name: 'add-tracker',
-                builder: (context, state) => AddTrackerScreen(
-                  toolId: state.pathParameters['toolId']!,
-                ),
+          // Find My Tool Tab (guarded by feature flag)
+          // Route is still defined but redirect will block access if disabled
+          if (FeatureFlags.enableFindTool)
+            GoRoute(
+              path: '/find',
+              name: 'find',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: FindToolScreen(),
               ),
-            ],
-          ),
+              routes: [
+                GoRoute(
+                  path: 'add-tracker/:toolId',
+                  name: 'add-tracker',
+                  builder: (context, state) => AddTrackerScreen(
+                    toolId: state.pathParameters['toolId']!,
+                  ),
+                ),
+              ],
+            ),
 
           // Profile Tab
           GoRoute(

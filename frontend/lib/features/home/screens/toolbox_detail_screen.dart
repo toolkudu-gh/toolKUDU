@@ -11,6 +11,8 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_dialog.dart';
 import '../../../core/models/tool.dart';
+import '../../../core/utils/responsive.dart';
+import '../../../core/utils/funny_messages.dart';
 import '../providers/toolbox_provider.dart';
 
 class ToolboxDetailScreen extends ConsumerWidget {
@@ -23,215 +25,423 @@ class ToolboxDetailScreen extends ConsumerWidget {
     final toolboxAsync = ref.watch(toolboxProvider(toolboxId));
     final toolsAsync = ref.watch(toolsInToolboxProvider(toolboxId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: Row(
+        child: isDesktop
+            ? _buildDesktopLayout(context, ref, toolboxAsync, toolsAsync, isDark)
+            : _buildMobileLayout(context, ref, toolboxAsync, toolsAsync, isDark),
+      ),
+      // Mobile only: Show FAB
+      floatingActionButton: !isDesktop
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 70),
+              child: FloatingActionButton.extended(
+                onPressed: () => context.go('/home/toolbox/$toolboxId/add-tool'),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Tool'),
+              ).animate().scale(
+                    delay: 400.ms,
+                    duration: 300.ms,
+                    curve: Curves.easeOutBack,
+                  ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<dynamic> toolboxAsync,
+    AsyncValue<List<Tool>> toolsAsync,
+    bool isDark,
+  ) {
+    return ResponsiveContainer(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Toolbox info panel
+          SizedBox(
+            width: 320,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    onPressed: () => context.go('/home'),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: toolboxAsync.when(
-                      data: (toolbox) => Text(
-                        toolbox?.name ?? 'Toolbox',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTheme.textPrimaryDark
-                              : AppTheme.textPrimaryLight,
+                  // Back button and title
+                  Row(
+                    children: [
+                      AppIconButton(
+                        icon: Icons.arrow_back_rounded,
+                        onPressed: () => context.go('/home'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: toolboxAsync.when(
+                          data: (toolbox) => Text(
+                            toolbox?.name ?? 'Toolbox',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppTheme.textPrimaryDark
+                                  : AppTheme.textPrimaryLight,
+                            ),
+                          ),
+                          loading: () => LoadingSkeleton.text(width: 150, height: 24),
+                          error: (_, __) => const Text('Toolbox'),
                         ),
                       ),
-                      loading: () => LoadingSkeleton.text(width: 120, height: 20),
-                      error: (_, __) => Text(
-                        'Toolbox',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTheme.textPrimaryDark
-                              : AppTheme.textPrimaryLight,
-                        ),
-                      ),
-                    ),
+                    ],
+                  ).animate().fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: 24),
+
+                  // Toolbox info card
+                  toolboxAsync.when(
+                    data: (toolbox) {
+                      if (toolbox == null) return const SizedBox.shrink();
+                      return _buildToolboxInfoCard(context, toolbox, isDark);
+                    },
+                    loading: () => const CardSkeleton(height: 120, showImage: false),
+                    error: (_, __) => const SizedBox.shrink(),
                   ),
-                  AppIconButton(
+
+                  const SizedBox(height: 24),
+
+                  // Action buttons
+                  AppButton(
+                    label: 'Add Tool',
+                    icon: Icons.add,
+                    fullWidth: true,
+                    onPressed: () => context.go('/home/toolbox/$toolboxId/add-tool'),
+                  ),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    label: 'Edit Toolbox',
                     icon: Icons.edit_outlined,
+                    variant: AppButtonVariant.outline,
+                    fullWidth: true,
                     onPressed: () {
                       // TODO: Edit toolbox
                     },
                   ),
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: isDark
-                          ? AppTheme.textSecondaryDark
-                          : AppTheme.textSecondaryLight,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'permissions') {
-                        // TODO: Manage permissions
-                      } else if (value == 'delete') {
-                        _showDeleteConfirmation(context);
-                      }
+                  const SizedBox(height: 12),
+                  AppButton(
+                    label: 'Manage Permissions',
+                    icon: Icons.lock_outlined,
+                    variant: AppButtonVariant.outline,
+                    fullWidth: true,
+                    onPressed: () {
+                      // TODO: Manage permissions
                     },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'permissions',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.lock_outlined,
-                              size: 20,
-                              color: isDark
-                                  ? AppTheme.textSecondaryDark
-                                  : AppTheme.textSecondaryLight,
-                            ),
-                            const SizedBox(width: 12),
-                            const Text('Permissions'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outlined,
-                              size: 20,
-                              color: AppTheme.errorColor,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Delete',
-                              style: TextStyle(color: AppTheme.errorColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(color: isDark ? AppTheme.borderDark : AppTheme.borderLight),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    label: 'Delete Toolbox',
+                    icon: Icons.delete_outlined,
+                    variant: AppButtonVariant.destructive,
+                    fullWidth: true,
+                    onPressed: () => _showDeleteConfirmation(context),
                   ),
                 ],
               ),
-            ).animate().fadeIn(duration: 300.ms),
+            ),
+          ),
 
-            // Toolbox info card
-            toolboxAsync.when(
-              data: (toolbox) {
-                if (toolbox == null) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: AppCard(
-                    padding: const EdgeInsets.all(16),
-                    enableHover: false,
+          const SizedBox(width: 32),
+
+          // Divider
+          Container(
+            width: 1,
+            height: double.infinity,
+            color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+          ),
+
+          const SizedBox(width: 32),
+
+          // Right side - Tools list
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tools header
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tools',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppTheme.textPrimaryDark
+                              : AppTheme.textPrimaryLight,
+                        ),
+                      ),
+                      toolsAsync.whenData((tools) => Text(
+                        '${tools.length} items',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? AppTheme.textMutedDark
+                              : AppTheme.textMutedLight,
+                        ),
+                      )).value ?? const SizedBox.shrink(),
+                    ],
+                  ),
+                ),
+
+                // Tools list
+                Expanded(
+                  child: toolsAsync.when(
+                    data: (tools) {
+                      if (tools.isEmpty) {
+                        return _buildEmptyState(context);
+                      }
+                      return GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 400,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          mainAxisExtent: 100,
+                        ),
+                        itemCount: tools.length,
+                        itemBuilder: (context, index) {
+                          final tool = tools[index];
+                          return _buildToolCard(context, tool, isDark, index);
+                        },
+                      );
+                    },
+                    loading: () => ListView.builder(
+                      itemCount: 4,
+                      itemBuilder: (context, index) => const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: CardSkeleton(height: 80, showImage: false),
+                      ),
+                    ),
+                    error: (_, __) => EmptyState.error(
+                      title: 'Failed to load tools',
+                      description: FunnyMessages.networkError,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<dynamic> toolboxAsync,
+    AsyncValue<List<Tool>> toolsAsync,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: Row(
+            children: [
+              AppIconButton(
+                icon: Icons.arrow_back_rounded,
+                onPressed: () => context.go('/home'),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: toolboxAsync.when(
+                  data: (toolbox) => Text(
+                    toolbox?.name ?? 'Toolbox',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppTheme.textPrimaryDark
+                          : AppTheme.textPrimaryLight,
+                    ),
+                  ),
+                  loading: () => LoadingSkeleton.text(width: 120, height: 20),
+                  error: (_, __) => Text(
+                    'Toolbox',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppTheme.textPrimaryDark
+                          : AppTheme.textPrimaryLight,
+                    ),
+                  ),
+                ),
+              ),
+              AppIconButton(
+                icon: Icons.edit_outlined,
+                onPressed: () {
+                  // TODO: Edit toolbox
+                },
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: isDark
+                      ? AppTheme.textSecondaryDark
+                      : AppTheme.textSecondaryLight,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                onSelected: (value) {
+                  if (value == 'permissions') {
+                    // TODO: Manage permissions
+                  } else if (value == 'delete') {
+                    _showDeleteConfirmation(context);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'permissions',
                     child: Row(
                       children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Color(int.parse(
-                              toolbox.color?.replaceFirst('#', '0xFF') ?? '0xFF6B8E7B',
-                            )).withOpacity(isDark ? 0.2 : 0.1),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                          ),
-                          child: Icon(
-                            _getToolboxIcon(toolbox.icon),
-                            size: 24,
-                            color: Color(int.parse(
-                              toolbox.color?.replaceFirst('#', '0xFF') ?? '0xFF6B8E7B',
-                            )),
-                          ),
+                        Icon(
+                          Icons.lock_outlined,
+                          size: 20,
+                          color: isDark
+                              ? AppTheme.textSecondaryDark
+                              : AppTheme.textSecondaryLight,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (toolbox.description != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  toolbox.description!,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark
-                                        ? AppTheme.textSecondaryDark
-                                        : AppTheme.textSecondaryLight,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ],
-                          ),
+                        const SizedBox(width: 12),
+                        const Text('Permissions'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outlined,
+                          size: 20,
+                          color: AppTheme.errorColor,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Delete',
+                          style: TextStyle(color: AppTheme.errorColor),
                         ),
                       ],
                     ),
                   ),
-                ).animate().fadeIn(delay: 100.ms, duration: 300.ms);
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(20),
+                ],
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 300.ms),
+
+        // Toolbox info card
+        toolboxAsync.when(
+          data: (toolbox) {
+            if (toolbox == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: _buildToolboxInfoCard(context, toolbox, isDark),
+            ).animate().fadeIn(delay: 100.ms, duration: 300.ms);
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.all(20),
+            child: CardSkeleton(height: 80, showImage: false),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+
+        // Tools list
+        Expanded(
+          child: toolsAsync.when(
+            data: (tools) {
+              if (tools.isEmpty) {
+                return _buildEmptyState(context);
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                itemCount: tools.length,
+                itemBuilder: (context, index) {
+                  final tool = tools[index];
+                  return _buildToolCard(context, tool, isDark, index);
+                },
+              );
+            },
+            loading: () => ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: 3,
+              itemBuilder: (context, index) => const Padding(
+                padding: EdgeInsets.only(bottom: 12),
                 child: CardSkeleton(height: 80, showImage: false),
               ),
-              error: (_, __) => const SizedBox.shrink(),
             ),
-
-            // Tools list
-            Expanded(
-              child: toolsAsync.when(
-                data: (tools) {
-                  if (tools.isEmpty) {
-                    return _buildEmptyState(context);
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                    itemCount: tools.length,
-                    itemBuilder: (context, index) {
-                      final tool = tools[index];
-                      return _buildToolCard(context, tool, isDark, index);
-                    },
-                  );
-                },
-                loading: () => ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: 3,
-                  itemBuilder: (context, index) => const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: CardSkeleton(height: 80, showImage: false),
-                  ),
-                ),
-                error: (_, __) => EmptyState.error(
-                  title: 'Failed to load tools',
-                  description: 'Check your connection and try again',
-                ),
-              ),
+            error: (_, __) => EmptyState.error(
+              title: 'Failed to load tools',
+              description: FunnyMessages.networkError,
             ),
-          ],
+          ),
         ),
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70),
-        child: FloatingActionButton.extended(
-          onPressed: () => context.go('/home/toolbox/$toolboxId/add-tool'),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Tool'),
-        ).animate().scale(
-              delay: 400.ms,
-              duration: 300.ms,
-              curve: Curves.easeOutBack,
+      ],
+    );
+  }
+
+  Widget _buildToolboxInfoCard(BuildContext context, dynamic toolbox, bool isDark) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      enableHover: false,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Color(int.parse(
+                toolbox.color?.replaceFirst('#', '0xFF') ?? '0xFF6B8E7B',
+              )).withOpacity(isDark ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
+            child: Icon(
+              _getToolboxIcon(toolbox.icon),
+              size: 24,
+              color: Color(int.parse(
+                toolbox.color?.replaceFirst('#', '0xFF') ?? '0xFF6B8E7B',
+              )),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (toolbox.description != null) ...[
+                  Text(
+                    toolbox.description!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppTheme.textSecondaryDark
+                          : AppTheme.textSecondaryLight,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -260,8 +470,8 @@ class ToolboxDetailScreen extends ConsumerWidget {
   Widget _buildEmptyState(BuildContext context) {
     return EmptyState(
       icon: Icons.handyman_outlined,
-      title: 'No tools in this toolbox',
-      description: 'Add your first tool to get started',
+      title: 'No Tools Yet',
+      description: FunnyMessages.noTools,
       actionLabel: 'Add First Tool',
       onAction: () => context.go('/home/toolbox/$toolboxId/add-tool'),
     ).animate().fadeIn(duration: 300.ms);
@@ -335,7 +545,7 @@ class ToolboxDetailScreen extends ConsumerWidget {
                           child: Icon(
                             Icons.location_on,
                             size: 16,
-                            color: AppTheme.successColor,
+                            color: AppTheme.getSuccessColor(context),
                           ),
                         ),
                     ],
@@ -388,7 +598,7 @@ class ToolboxDetailScreen extends ConsumerWidget {
     final confirmed = await AppDialog.confirm(
       context: context,
       title: 'Delete Toolbox?',
-      description: 'This will permanently delete this toolbox and all tools inside it.',
+      description: FunnyMessages.deleteToolbox,
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       isDestructive: true,

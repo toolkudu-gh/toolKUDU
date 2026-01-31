@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'app_button.dart';
+import '../../core/utils/funny_messages.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -39,14 +40,14 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.noResults({
     String title = 'No results found',
-    String? description = 'Try adjusting your search or filters',
+    String? description,
     String? actionLabel = 'Clear filters',
     VoidCallback? onAction,
   }) {
     return EmptyState(
       icon: Icons.search_off_outlined,
       title: title,
-      description: description,
+      description: description ?? FunnyMessages.noSearchResults,
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -54,14 +55,14 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.error({
     String title = 'Something went wrong',
-    String? description = 'Please try again later',
+    String? description,
     String? actionLabel = 'Retry',
     VoidCallback? onAction,
   }) {
     return EmptyState(
       icon: Icons.error_outline,
       title: title,
-      description: description,
+      description: description ?? FunnyMessages.genericError,
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -69,15 +70,77 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.noConnection({
     String title = 'No internet connection',
-    String? description = 'Check your connection and try again',
+    String? description,
     String? actionLabel = 'Retry',
     VoidCallback? onAction,
   }) {
     return EmptyState(
       icon: Icons.wifi_off_outlined,
       title: title,
-      description: description,
+      description: description ?? FunnyMessages.networkError,
       actionLabel: actionLabel,
+      onAction: onAction,
+    );
+  }
+
+  // Specific empty states with funny messages
+  factory EmptyState.noTools({
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    return EmptyState(
+      icon: Icons.handyman_outlined,
+      title: 'No Tools Yet',
+      description: FunnyMessages.noTools,
+      actionLabel: actionLabel ?? 'Add First Tool',
+      onAction: onAction,
+    );
+  }
+
+  factory EmptyState.noToolboxes({
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    return EmptyState(
+      icon: Icons.inventory_2_outlined,
+      title: 'No Toolboxes Yet',
+      description: FunnyMessages.noToolboxes,
+      actionLabel: actionLabel ?? 'Create Toolbox',
+      onAction: onAction,
+    );
+  }
+
+  factory EmptyState.noRequests({
+    VoidCallback? onAction,
+  }) {
+    return EmptyState(
+      icon: Icons.swap_horiz_outlined,
+      title: 'No Requests',
+      description: FunnyMessages.noRequests,
+      onAction: onAction,
+    );
+  }
+
+  factory EmptyState.noBuddies({
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    return EmptyState(
+      icon: Icons.people_outline,
+      title: 'No Buddies Yet',
+      description: FunnyMessages.noBuddies,
+      actionLabel: actionLabel ?? 'Find Buddies',
+      onAction: onAction,
+    );
+  }
+
+  factory EmptyState.noHistory({
+    VoidCallback? onAction,
+  }) {
+    return EmptyState(
+      icon: Icons.history_outlined,
+      title: 'No History',
+      description: FunnyMessages.noHistory,
       onAction: onAction,
     );
   }

@@ -7,6 +7,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_input.dart';
+import '../../../shared/widgets/funny_snackbar.dart';
 
 class AddToolScreen extends ConsumerStatefulWidget {
   final String toolboxId;
@@ -56,6 +57,7 @@ class _AddToolScreenState extends ConsumerState<AddToolScreen> {
     await Future.delayed(const Duration(seconds: 1));
 
     if (mounted) {
+      FunnySnackBar.toolAdded(context);
       context.go('/home/toolbox/${widget.toolboxId}');
     }
   }

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Custom color palette
+  // ==================== LIGHT THEME PALETTE ====================
+  // Custom warm palette (unchanged from original)
   static const Color primaryColor = Color(0xFF6B8E7B); // Sage green
   static const Color primaryHover = Color(0xFF5A7A69); // Darker sage
   static const Color accentColor = Color(0xFFC77B58); // Terracotta
   static const Color secondaryColor = Color(0xFFC77B58); // Terracotta accent
 
-  // Status colors
+  // Status colors - Light theme
   static const Color successColor = Color(0xFF10B981); // Emerald
   static const Color successLight = Color(0xFFD1FAE5);
   static const Color warningColor = Color(0xFFF59E0B); // Amber
@@ -24,13 +25,29 @@ class AppTheme {
   static const Color textMutedLight = Color(0xFF78716C); // Stone-500
   static const Color borderLight = Color(0xFFE7E5E4); // Stone-200
 
-  // Dark theme - Custom warm palette (dark variant)
-  static const Color backgroundDark = Color(0xFF1A1D1E); // Dark charcoal
-  static const Color surfaceDark = Color(0xFF2D3436); // Charcoal (matching light text)
-  static const Color textPrimaryDark = Color(0xFFFAFAF8); // Warm white (matching light bg)
-  static const Color textSecondaryDark = Color(0xFFB8C4C2); // Muted sage
-  static const Color textMutedDark = Color(0xFF8B9A96); // Darker muted sage
-  static const Color borderDark = Color(0xFF3D4547); // Lighter charcoal
+  // ==================== DARK THEME PALETTE - "GARAGE NIGHT" ====================
+  // GitHub-inspired dark theme, very readable and modern
+  static const Color primaryDark = Color(0xFF5D6D7E); // Slate Gray
+  static const Color accentDark = Color(0xFFE67E22); // Safety Orange
+
+  // Status colors - Dark theme (enhanced visibility)
+  static const Color successDark = Color(0xFF3FB950); // GitHub green
+  static const Color warningDark = Color(0xFFF0883E); // GitHub orange
+
+  // Dark theme - Garage Night palette
+  static const Color backgroundDark = Color(0xFF0D1117); // Deep dark (GitHub)
+  static const Color surfaceDark = Color(0xFF161B22); // Elevated surface
+  static const Color surfaceElevatedDark = Color(0xFF21262D); // Cards/dialogs
+  static const Color textPrimaryDark = Color(0xFFF0F6FC); // Bright white
+  static const Color textSecondaryDark = Color(0xFF8B949E); // Muted gray
+  static const Color textMutedDark = Color(0xFF6E7681); // Dimmer text
+  static const Color borderDark = Color(0xFF30363D); // Subtle border
+
+  // Glassmorphism colors
+  static Color get glassLight => Colors.white.withOpacity(0.7);
+  static Color get glassDark => const Color(0xFF161B22).withOpacity(0.8);
+  static Color get glassBorderLight => Colors.white.withOpacity(0.3);
+  static Color get glassBorderDark => const Color(0xFF30363D).withOpacity(0.5);
 
   // Border radii
   static const double radiusSm = 6.0;
@@ -353,9 +370,9 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: ColorScheme.dark(
-        primary: primaryColor,
-        secondary: secondaryColor,
-        tertiary: successColor,
+        primary: primaryDark,
+        secondary: accentDark,
+        tertiary: successDark,
         error: errorColor,
         surface: surfaceDark,
         onPrimary: Colors.white,
@@ -369,7 +386,7 @@ class AppTheme {
         displayColor: textPrimaryDark,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: surfaceDark.withOpacity(0.8),
+        backgroundColor: surfaceDark.withOpacity(0.85),
         foregroundColor: textPrimaryDark,
         elevation: 0,
         centerTitle: false,
@@ -383,13 +400,13 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surfaceDark,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: primaryColor.withOpacity(0.2),
+        indicatorColor: accentDark.withOpacity(0.15),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: primaryColor,
+              color: accentDark,
             );
           }
           return GoogleFonts.inter(
@@ -400,7 +417,7 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: primaryColor, size: 24);
+            return IconThemeData(color: accentDark, size: 24);
           }
           return IconThemeData(color: textMutedDark, size: 24);
         }),
@@ -408,7 +425,7 @@ class AppTheme {
         height: 70,
       ),
       cardTheme: CardThemeData(
-        color: surfaceDark,
+        color: surfaceElevatedDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLg),
@@ -418,7 +435,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceDark,
+        fillColor: surfaceElevatedDark,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
           borderSide: BorderSide(color: borderDark),
@@ -429,7 +446,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: primaryColor, width: 2),
+          borderSide: BorderSide(color: accentDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
@@ -451,7 +468,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: accentDark,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -480,7 +497,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primaryColor,
+          foregroundColor: accentDark,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
@@ -492,7 +509,7 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
+        backgroundColor: accentDark,
         foregroundColor: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -500,8 +517,8 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: surfaceDark,
-        selectedColor: primaryColor.withOpacity(0.2),
+        backgroundColor: surfaceElevatedDark,
+        selectedColor: accentDark.withOpacity(0.2),
         disabledColor: borderDark,
         labelStyle: GoogleFonts.inter(
           fontSize: 13,
@@ -511,7 +528,7 @@ class AppTheme {
         secondaryLabelStyle: GoogleFonts.inter(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: primaryColor,
+          color: accentDark,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius2xl),
@@ -525,7 +542,7 @@ class AppTheme {
         space: 1,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surfaceDark,
+        backgroundColor: surfaceElevatedDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusXl),
@@ -541,7 +558,7 @@ class AppTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: surfaceDark,
+        backgroundColor: surfaceElevatedDark,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -559,7 +576,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
       ),
       tabBarTheme: TabBarThemeData(
-        labelColor: primaryColor,
+        labelColor: accentDark,
         unselectedLabelColor: textMutedDark,
         labelStyle: GoogleFonts.inter(
           fontSize: 14,
@@ -569,7 +586,7 @@ class AppTheme {
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        indicatorColor: primaryColor,
+        indicatorColor: accentDark,
         indicatorSize: TabBarIndicatorSize.label,
       ),
       listTileTheme: ListTileThemeData(
@@ -600,12 +617,31 @@ class AppTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return primaryColor;
+            return accentDark;
           }
           return borderDark;
         }),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
     );
+  }
+
+  // Helper method to get appropriate colors based on theme
+  static Color getPrimaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? accentDark
+        : primaryColor;
+  }
+
+  static Color getSuccessColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? successDark
+        : successColor;
+  }
+
+  static Color getWarningColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? warningDark
+        : warningColor;
   }
 }

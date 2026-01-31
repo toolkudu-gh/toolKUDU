@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'app_button.dart';
+import '../../core/utils/funny_messages.dart';
 
 class AppDialog extends StatelessWidget {
   final IconData? icon;
@@ -125,6 +126,80 @@ class AppDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
         ),
       ],
+    );
+  }
+
+  // ============== Funny confirmation dialogs ==============
+
+  /// Confirm deleting a tool with a funny message
+  static Future<bool?> confirmDeleteTool({
+    required BuildContext context,
+    String? toolName,
+  }) {
+    return confirm(
+      context: context,
+      title: toolName != null ? 'Delete "$toolName"?' : 'Delete Tool?',
+      description: FunnyMessages.deleteTool,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep It',
+      isDestructive: true,
+    );
+  }
+
+  /// Confirm deleting a toolbox with a funny message
+  static Future<bool?> confirmDeleteToolbox({
+    required BuildContext context,
+    String? toolboxName,
+  }) {
+    return confirm(
+      context: context,
+      title: toolboxName != null ? 'Delete "$toolboxName"?' : 'Delete Toolbox?',
+      description: FunnyMessages.deleteToolbox,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep It',
+      isDestructive: true,
+    );
+  }
+
+  /// Confirm returning a tool with a funny message
+  static Future<bool?> confirmReturnTool({
+    required BuildContext context,
+    String? toolName,
+  }) {
+    return confirm(
+      context: context,
+      title: toolName != null ? 'Return "$toolName"?' : 'Return Tool?',
+      description: FunnyMessages.returnTool,
+      confirmLabel: 'Return',
+      cancelLabel: 'Keep Borrowing',
+    );
+  }
+
+  /// Confirm signing out with a funny message
+  static Future<bool?> confirmSignOut({
+    required BuildContext context,
+  }) {
+    return confirm(
+      context: context,
+      title: 'Sign Out',
+      description: FunnyMessages.signOut,
+      confirmLabel: 'Sign Out',
+      cancelLabel: 'Stay',
+      isDestructive: true,
+    );
+  }
+
+  /// Confirm canceling a request with a funny message
+  static Future<bool?> confirmCancelRequest({
+    required BuildContext context,
+  }) {
+    return confirm(
+      context: context,
+      title: 'Cancel Request?',
+      description: FunnyMessages.cancelRequest,
+      confirmLabel: 'Cancel Request',
+      cancelLabel: 'Keep Request',
+      isDestructive: true,
     );
   }
 
