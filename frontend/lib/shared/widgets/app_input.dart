@@ -10,6 +10,7 @@ class AppInput extends StatefulWidget {
   final String? errorText;
   final IconData? prefixIcon;
   final Widget? suffix;
+  final Widget? suffixIcon;
   final bool obscureText;
   final bool enabled;
   final bool autofocus;
@@ -33,6 +34,7 @@ class AppInput extends StatefulWidget {
     this.errorText,
     this.prefixIcon,
     this.suffix,
+    this.suffixIcon,
     this.obscureText = false,
     this.enabled = true,
     this.autofocus = false,
@@ -181,7 +183,12 @@ class _AppInputState extends State<AppInput> {
                             : AppTheme.textMutedLight,
                       ),
                     )
-                  : widget.suffix,
+                  : (widget.suffixIcon != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: widget.suffixIcon,
+                        )
+                      : widget.suffix),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,

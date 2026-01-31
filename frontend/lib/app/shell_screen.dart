@@ -1,25 +1,29 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../shared/theme/app_theme.dart';
+import '../shared/widgets/account_drawer.dart';
 import '../core/utils/responsive.dart';
+import '../core/providers/auth_provider.dart';
 import 'desktop_header.dart';
 
-class ShellScreen extends StatefulWidget {
+class ShellScreen extends ConsumerStatefulWidget {
   final Widget child;
 
   const ShellScreen({super.key, required this.child});
 
   @override
-  State<ShellScreen> createState() => _ShellScreenState();
+  ConsumerState<ShellScreen> createState() => _ShellScreenState();
 }
 
-class _ShellScreenState extends State<ShellScreen> {
+class _ShellScreenState extends ConsumerState<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDesktop = Responsive.isDesktop(context);
+    final user = ref.watch(currentUserProvider);
 
     // Desktop layout with top header
     if (isDesktop) {
@@ -37,7 +41,13 @@ class _ShellScreenState extends State<ShellScreen> {
     final selectedIndex = _calculateSelectedIndex(context);
 
     return Scaffold(
-      body: widget.child,
+      body: Column(
+        children: [
+          // Mobile app bar with account icon
+          _buildMobileAppBar(context, isDark, user),
+          Expanded(child: widget.child),
+        ],
+      ),
       extendBody: true,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -82,18 +92,16 @@ class _ShellScreenState extends State<ShellScreen> {
                       onTap: () => _onItemTapped(1, context),
                     ),
                     _NavItem(
-                      icon: Icons.swap_horiz_outlined,
-                      selectedIcon: Icons.swap_horiz_rounded,
-                      label: 'Share',
+                      icon: Icons.people_outline_rounded,
+                      selectedIcon: Icons.people_rounded,
+                      label: 'Buddies',
                       isSelected: selectedIndex == 2,
                       onTap: () => _onItemTapped(2, context),
                     ),
-                    // Find tab hidden - GPS feature disabled
-                    // Keep Profile as the 4th tab
                     _NavItem(
-                      icon: Icons.person_outline_rounded,
-                      selectedIcon: Icons.person_rounded,
-                      label: 'Profile',
+                      icon: Icons.swap_horiz_outlined,
+                      selectedIcon: Icons.swap_horiz_rounded,
+                      label: 'Share',
                       isSelected: selectedIndex == 3,
                       onTap: () => _onItemTapped(3, context),
                     ),
@@ -107,14 +115,89 @@ class _ShellScreenState extends State<ShellScreen> {
     );
   }
 
+  Widget _buildMobileAppBar(BuildContext context, bool isDark, dynamic user) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.glassDark : AppTheme.glassLight,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+                width: 1,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // Logo/Title area - empty for now, screens have their own headers
+                  const Spacer(),
+                  // Account button
+                  GestureDetector(
+                    onTap: () => showAccountDrawer(context),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: user?.avatarUrl != null
+                          ? ClipOval(
+                              child: Image.network(
+                                user!.avatarUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Text(
+                                    (user.username ?? 'U')[0].toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                (user?.username ?? 'U')[0].toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
 
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/search')) return 1;
-    if (location.startsWith('/share')) return 2;
-    // Find tab removed - skip index 3
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/buddies')) return 2;
+    if (location.startsWith('/share')) return 3;
+    // Profile is now accessible via account drawer, not main nav
+    if (location.startsWith('/profile')) return -1;
 
     return 0;
   }
@@ -128,10 +211,10 @@ class _ShellScreenState extends State<ShellScreen> {
         context.go('/search');
         break;
       case 2:
-        context.go('/share');
+        context.go('/buddies');
         break;
       case 3:
-        context.go('/profile');
+        context.go('/share');
         break;
     }
   }

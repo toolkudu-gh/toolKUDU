@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -29,13 +30,124 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _passwordError;
   String? _confirmPasswordError;
 
+  // Username availability check state
+  bool _isCheckingUsername = false;
+  bool? _isUsernameAvailable;
+  List<String> _usernameSuggestions = [];
+  Timer? _usernameDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController.addListener(_onUsernameChanged);
+  }
+
   @override
   void dispose() {
+    _usernameDebounce?.cancel();
+    _usernameController.removeListener(_onUsernameChanged);
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _onUsernameChanged() {
+    final username = _usernameController.text.trim();
+
+    // Cancel previous debounce
+    _usernameDebounce?.cancel();
+
+    // Reset state if username is too short
+    if (username.length < 3) {
+      setState(() {
+        _isUsernameAvailable = null;
+        _usernameSuggestions = [];
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Validate format
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
+      setState(() {
+        _isUsernameAvailable = null;
+        _usernameSuggestions = [];
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Show loading indicator
+    setState(() {
+      _isCheckingUsername = true;
+      _isUsernameAvailable = null;
+    });
+
+    // Debounce the API call (300ms)
+    _usernameDebounce = Timer(const Duration(milliseconds: 300), () {
+      _checkUsernameAvailability(username);
+    });
+  }
+
+  Future<void> _checkUsernameAvailability(String username) async {
+    final authService = ref.read(authServiceProvider);
+    final result = await authService.checkUsernameAvailability(username);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingUsername = false;
+      _isUsernameAvailable = result['available'] == true;
+      if (!_isUsernameAvailable!) {
+        _usernameSuggestions = List<String>.from(result['suggestions'] ?? []);
+      } else {
+        _usernameSuggestions = [];
+      }
+    });
+  }
+
+  void _selectSuggestion(String suggestion) {
+    _usernameController.text = suggestion;
+    // Trigger recheck
+    _onUsernameChanged();
+  }
+
+  Widget? _buildUsernameSuffixIcon() {
+    final username = _usernameController.text.trim();
+
+    // Don't show anything if username is too short
+    if (username.length < 3) return null;
+
+    // Show loading indicator while checking
+    if (_isCheckingUsername) {
+      return SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppTheme.primaryColor,
+        ),
+      );
+    }
+
+    // Show availability status
+    if (_isUsernameAvailable == true) {
+      return Icon(
+        Icons.check_circle,
+        color: AppTheme.successColor,
+        size: 20,
+      );
+    } else if (_isUsernameAvailable == false) {
+      return Icon(
+        Icons.cancel,
+        color: AppTheme.errorColor,
+        size: 20,
+      );
+    }
+
+    return null;
   }
 
   bool _validateForm() {
@@ -57,6 +169,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       isValid = false;
     } else if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(_usernameController.text)) {
       setState(() => _usernameError = 'Only letters, numbers, and underscores allowed');
+      isValid = false;
+    } else if (_isUsernameAvailable == false) {
+      setState(() => _usernameError = 'Username is already taken');
+      isValid = false;
+    } else if (_isCheckingUsername) {
+      setState(() => _usernameError = 'Please wait while we check availability');
       isValid = false;
     }
 
@@ -216,7 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Username
+                                // Username with availability indicator
                                 AppInput(
                                   controller: _usernameController,
                                   label: 'Username',
@@ -224,12 +342,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   prefixIcon: Icons.person_outlined,
                                   textInputAction: TextInputAction.next,
                                   errorText: _usernameError,
+                                  suffixIcon: _buildUsernameSuffixIcon(),
                                   onChanged: (_) {
                                     if (_usernameError != null) {
                                       setState(() => _usernameError = null);
                                     }
                                   },
                                 ),
+                                // Username suggestions
+                                if (_usernameSuggestions.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _usernameSuggestions.map((suggestion) {
+                                      return GestureDetector(
+                                        onTap: () => _selectSuggestion(suggestion),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                                            borderRadius: BorderRadius.circular(AppTheme.radius2xl),
+                                            border: Border.all(
+                                              color: AppTheme.primaryColor.withOpacity(0.3),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            suggestion,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppTheme.primaryColor,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
                                 const SizedBox(height: 16),
 
                                 // Email

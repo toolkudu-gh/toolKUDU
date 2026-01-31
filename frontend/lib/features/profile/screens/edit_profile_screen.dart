@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -18,25 +20,188 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _displayNameController;
+  late TextEditingController _usernameController;
   late TextEditingController _bioController;
   bool _isLoading = false;
+
+  // Username editing state
+  bool _isEditingUsername = false;
+  bool _isCheckingUsername = false;
+  bool? _isUsernameAvailable;
+  String? _usernameError;
+  Timer? _usernameDebounce;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider);
     _displayNameController = TextEditingController(text: user?.displayName);
+    _usernameController = TextEditingController(text: user?.username);
     _bioController = TextEditingController(text: user?.bio);
+    _usernameController.addListener(_onUsernameChanged);
   }
 
   @override
   void dispose() {
+    _usernameDebounce?.cancel();
     _displayNameController.dispose();
+    _usernameController.removeListener(_onUsernameChanged);
+    _usernameController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
+  void _onUsernameChanged() {
+    if (!_isEditingUsername) return;
+
+    final username = _usernameController.text.trim();
+    final user = ref.read(currentUserProvider);
+
+    // If same as current username, reset state
+    if (username == user?.username) {
+      setState(() {
+        _isUsernameAvailable = null;
+        _usernameError = null;
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Cancel previous debounce
+    _usernameDebounce?.cancel();
+
+    // Validate length
+    if (username.length < 3) {
+      setState(() {
+        _isUsernameAvailable = null;
+        _usernameError = 'Username must be at least 3 characters';
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Validate format
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
+      setState(() {
+        _isUsernameAvailable = null;
+        _usernameError = 'Only letters, numbers, and underscores allowed';
+        _isCheckingUsername = false;
+      });
+      return;
+    }
+
+    // Show loading indicator
+    setState(() {
+      _isCheckingUsername = true;
+      _isUsernameAvailable = null;
+      _usernameError = null;
+    });
+
+    // Debounce the API call (300ms)
+    _usernameDebounce = Timer(const Duration(milliseconds: 300), () {
+      _checkUsernameAvailability(username);
+    });
+  }
+
+  Future<void> _checkUsernameAvailability(String username) async {
+    final authService = ref.read(authServiceProvider);
+    final result = await authService.checkUsernameAvailability(username);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingUsername = false;
+      _isUsernameAvailable = result['available'] == true;
+      if (!_isUsernameAvailable!) {
+        _usernameError = 'Username is already taken';
+      } else {
+        _usernameError = null;
+      }
+    });
+  }
+
+  void _startEditingUsername() {
+    final user = ref.read(currentUserProvider);
+    if (user?.canChangeUsername != true) return;
+    setState(() {
+      _isEditingUsername = true;
+    });
+  }
+
+  void _cancelEditingUsername() {
+    final user = ref.read(currentUserProvider);
+    setState(() {
+      _isEditingUsername = false;
+      _usernameController.text = user?.username ?? '';
+      _isUsernameAvailable = null;
+      _usernameError = null;
+    });
+  }
+
+  Widget? _buildUsernameSuffixIcon() {
+    final username = _usernameController.text.trim();
+    final user = ref.read(currentUserProvider);
+
+    // If same as current username, no indicator needed
+    if (username == user?.username) return null;
+
+    // Don't show anything if username is too short
+    if (username.length < 3) return null;
+
+    // Show loading indicator while checking
+    if (_isCheckingUsername) {
+      return SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppTheme.primaryColor,
+        ),
+      );
+    }
+
+    // Show availability status
+    if (_isUsernameAvailable == true) {
+      return Icon(
+        Icons.check_circle,
+        color: AppTheme.successColor,
+        size: 20,
+      );
+    } else if (_isUsernameAvailable == false) {
+      return Icon(
+        Icons.cancel,
+        color: AppTheme.errorColor,
+        size: 20,
+      );
+    }
+
+    return null;
+  }
+
+  String _getCooldownText(DateTime? availableDate) {
+    if (availableDate == null) return 'Can change once per month';
+    final formatter = DateFormat('MMM d, yyyy');
+    return 'Can change again on ${formatter.format(availableDate)}';
+  }
+
   Future<void> _handleSave() async {
+    final user = ref.read(currentUserProvider);
+    final newUsername = _usernameController.text.trim();
+    final isUsernameChanged = _isEditingUsername && newUsername != user?.username;
+
+    // Validate username if changed
+    if (isUsernameChanged) {
+      if (_isUsernameAvailable != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please choose an available username'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     // TODO: Call API to update profile
@@ -45,7 +210,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Profile updated'),
+          content: Text(isUsernameChanged
+              ? 'Profile updated with new username'
+              : 'Profile updated'),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -222,7 +389,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Username (read-only)
+                  // Username (editable with 30-day cooldown)
                   AppCard(
                     padding: const EdgeInsets.all(20),
                     enableHover: false,
@@ -242,66 +409,119 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppTheme.borderDark
-                                    : AppTheme.borderLight,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Cannot be changed',
-                                style: TextStyle(
-                                  fontSize: 10,
+                            if (user?.canChangeUsername != true) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
                                   color: isDark
-                                      ? AppTheme.textMutedDark
-                                      : AppTheme.textMutedLight,
+                                      ? AppTheme.borderDark
+                                      : AppTheme.borderLight,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _getCooldownText(user?.usernameChangeAvailableDate),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark
+                                        ? AppTheme.textMutedDark
+                                        : AppTheme.textMutedLight,
+                                  ),
                                 ),
                               ),
-                            ),
+                            ] else if (!_isEditingUsername) ...[
+                              GestureDetector(
+                                onTap: _startEditingUsername,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Tap to edit',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppTheme.backgroundDark
-                                : AppTheme.backgroundLight,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppTheme.borderDark
-                                  : AppTheme.borderLight,
-                            ),
+                        if (_isEditingUsername) ...[
+                          AppInput(
+                            controller: _usernameController,
+                            prefixIcon: Icons.alternate_email,
+                            errorText: _usernameError,
+                            suffixIcon: _buildUsernameSuffixIcon(),
                           ),
-                          child: Row(
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Icon(
-                                Icons.alternate_email,
-                                size: 20,
-                                color: isDark
-                                    ? AppTheme.textMutedDark
-                                    : AppTheme.textMutedLight,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                user?.username ?? 'username',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: isDark
-                                      ? AppTheme.textSecondaryDark
-                                      : AppTheme.textSecondaryLight,
+                              TextButton(
+                                onPressed: _cancelEditingUsername,
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? AppTheme.textSecondaryDark
+                                        : AppTheme.textSecondaryLight,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
+                        ] else ...[
+                          GestureDetector(
+                            onTap: user?.canChangeUsername == true ? _startEditingUsername : null,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppTheme.backgroundDark
+                                    : AppTheme.backgroundLight,
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppTheme.borderDark
+                                      : AppTheme.borderLight,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.alternate_email,
+                                    size: 20,
+                                    color: isDark
+                                        ? AppTheme.textMutedDark
+                                        : AppTheme.textMutedLight,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    user?.username ?? 'username',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: isDark
+                                          ? AppTheme.textSecondaryDark
+                                          : AppTheme.textSecondaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ).animate().fadeIn(delay: 200.ms, duration: 300.ms),

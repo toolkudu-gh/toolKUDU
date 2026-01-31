@@ -9,6 +9,7 @@ class User {
   final int followingCount;
   final bool? isFollowing;
   final bool? isBuddy;
+  final DateTime? lastUsernameChange;
 
   const User({
     required this.id,
@@ -21,6 +22,7 @@ class User {
     this.followingCount = 0,
     this.isFollowing,
     this.isBuddy,
+    this.lastUsernameChange,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,9 @@ class User {
       followingCount: json['followingCount'] as int? ?? 0,
       isFollowing: json['isFollowing'] as bool?,
       isBuddy: json['isBuddy'] as bool?,
+      lastUsernameChange: json['lastUsernameChange'] != null
+          ? DateTime.parse(json['lastUsernameChange'] as String)
+          : null,
     );
   }
 
@@ -50,6 +55,7 @@ class User {
       'followingCount': followingCount,
       'isFollowing': isFollowing,
       'isBuddy': isBuddy,
+      'lastUsernameChange': lastUsernameChange?.toIso8601String(),
     };
   }
 
@@ -64,6 +70,7 @@ class User {
     int? followingCount,
     bool? isFollowing,
     bool? isBuddy,
+    DateTime? lastUsernameChange,
   }) {
     return User(
       id: id ?? this.id,
@@ -76,8 +83,22 @@ class User {
       followingCount: followingCount ?? this.followingCount,
       isFollowing: isFollowing ?? this.isFollowing,
       isBuddy: isBuddy ?? this.isBuddy,
+      lastUsernameChange: lastUsernameChange ?? this.lastUsernameChange,
     );
   }
 
   String get displayNameOrUsername => displayName ?? username;
+
+  /// Check if username can be changed (30-day cooldown)
+  bool get canChangeUsername {
+    if (lastUsernameChange == null) return true;
+    final daysSinceChange = DateTime.now().difference(lastUsernameChange!).inDays;
+    return daysSinceChange >= 30;
+  }
+
+  /// Get the date when username can be changed again
+  DateTime? get usernameChangeAvailableDate {
+    if (lastUsernameChange == null) return null;
+    return lastUsernameChange!.add(const Duration(days: 30));
+  }
 }

@@ -175,6 +175,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
+          // Buddies Tab (elevated from profile)
+          GoRoute(
+            path: '/buddies',
+            name: 'buddies',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: BuddiesScreen(),
+            ),
+          ),
+
           // Share Tab
           GoRoute(
             path: '/share',
@@ -204,7 +213,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ],
             ),
 
-          // Profile Tab
+          // Profile (accessible via account drawer)
           GoRoute(
             path: '/profile',
             name: 'profile',
@@ -218,16 +227,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const EditProfileScreen(),
               ),
               GoRoute(
-                path: 'buddies',
-                name: 'buddies',
-                builder: (context, state) => const BuddiesScreen(),
-              ),
-              GoRoute(
                 path: 'settings',
                 name: 'settings',
                 builder: (context, state) => const SettingsScreen(),
               ),
             ],
+          ),
+
+          // Username deep link for profile sharing
+          GoRoute(
+            path: '/u/:username',
+            name: 'user-by-username',
+            builder: (context, state) {
+              final username = state.pathParameters['username']!;
+              // For now, redirect to search with the username
+              // In production, this would resolve username to userId
+              return UserProfileScreen(
+                userId: username,
+                borrowMode: false,
+              );
+            },
           ),
         ],
       ),

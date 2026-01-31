@@ -68,6 +68,14 @@ class DesktopHeader extends ConsumerWidget implements PreferredSizeWidget {
                         ),
                         const SizedBox(width: 8),
                         _NavLink(
+                          label: 'Buddies',
+                          icon: Icons.people_outline_rounded,
+                          selectedIcon: Icons.people_rounded,
+                          isSelected: currentLocation.startsWith('/buddies'),
+                          onTap: () => context.go('/buddies'),
+                        ),
+                        const SizedBox(width: 8),
+                        _NavLink(
                           label: 'Share',
                           icon: Icons.swap_horiz_outlined,
                           selectedIcon: Icons.swap_horiz_rounded,
@@ -270,8 +278,8 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
           case 'profile':
             context.go('/profile');
             break;
-          case 'buddies':
-            context.go('/profile/buddies');
+          case 'edit':
+            context.go('/profile/edit');
             break;
           case 'settings':
             context.go('/profile/settings');
@@ -291,23 +299,23 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
                     : AppTheme.textSecondaryLight,
               ),
               const SizedBox(width: 12),
-              const Text('Profile'),
+              const Text('View Profile'),
             ],
           ),
         ),
         PopupMenuItem(
-          value: 'buddies',
+          value: 'edit',
           child: Row(
             children: [
               Icon(
-                Icons.people_outline,
+                Icons.edit_outlined,
                 size: 20,
                 color: widget.isDark
                     ? AppTheme.textSecondaryDark
                     : AppTheme.textSecondaryLight,
               ),
               const SizedBox(width: 12),
-              const Text('Buddies'),
+              const Text('Edit Profile'),
             ],
           ),
         ),

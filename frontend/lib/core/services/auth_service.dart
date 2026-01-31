@@ -396,12 +396,17 @@ class AuthService {
       if (CognitoConfig.isDevelopment) {
         // Mock Google sign-in for development
         // Auto-register Google user if not already registered
-        if (!await _isEmailVerified(googleUser.email)) {
+        final isNewUser = !await _isEmailVerified(googleUser.email);
+        if (isNewUser) {
           await _addVerifiedEmail(googleUser.email);
         }
 
+        // Auto-generate username from email for Google users
+        final autoUsername = await generateUniqueUsername(googleUser.email);
+
         // Store the user email for getCurrentUser
         await storage.write(key: _userKey, value: googleUser.email);
+        await storage.write(key: '${_userKey}_username', value: autoUsername);
 
         await saveTokens(
           accessToken: 'google_mock_token_${googleUser.email}',
@@ -411,10 +416,12 @@ class AuthService {
         return {
           'success': true,
           'accessToken': 'google_mock_token',
+          'isNewUser': isNewUser,
           'user': {
             'email': googleUser.email,
             'displayName': googleUser.displayName,
             'photoUrl': googleUser.photoUrl,
+            'username': autoUsername,
           },
         };
       }
@@ -505,15 +512,19 @@ class AuthService {
 
       if (code == '123456' || code.length == 6) {
         // Auto-register user if not already registered
-        final isVerified = await _isEmailVerified(email);
-        if (!isVerified) {
+        final isNewUser = !await _isEmailVerified(email);
+        if (isNewUser) {
           // Remove from pending if exists and add to verified
           await _removePendingVerificationEmail(email);
           await _addVerifiedEmail(email);
         }
 
-        // Store the current user's email for getCurrentUser
+        // Auto-generate username from email for Magic Link users
+        final autoUsername = await generateUniqueUsername(email);
+
+        // Store the current user's email and username for getCurrentUser
         await storage.write(key: _userKey, value: email);
+        await storage.write(key: '${_userKey}_username', value: autoUsername);
 
         await saveTokens(
           accessToken: 'magic_link_mock_token_$email',
@@ -524,7 +535,8 @@ class AuthService {
         return {
           'success': true,
           'accessToken': 'magic_link_mock_token',
-          'isNewUser': !isVerified,
+          'isNewUser': isNewUser,
+          'username': autoUsername,
         };
       }
 
@@ -590,8 +602,10 @@ class AuthService {
       if (CognitoConfig.isDevelopment) {
         // Get the stored user email (from magic link, regular login, or Google sign-in)
         final storedEmail = await storage.read(key: _userKey);
+        final storedUsername = await storage.read(key: '${_userKey}_username');
         final email = storedEmail ?? 'test@example.com';
-        final username = email.split('@').first;
+        // Use stored username if available, otherwise derive from email
+        final username = storedUsername ?? email.split('@').first;
 
         return User(
           id: 'mock-user-${email.hashCode}',
@@ -656,5 +670,75 @@ class AuthService {
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
+  }
+
+  /// Check if a username is available
+  /// Returns { available: bool, suggestions: List<String>? }
+  Future<Map<String, dynamic>> checkUsernameAvailability(String username) async {
+    // Simulate API delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // In development mode, mock the availability check
+    // Treat certain usernames as "taken" for testing
+    final takenUsernames = ['admin', 'test', 'user', 'demo', 'toolkudu'];
+    final normalizedUsername = username.toLowerCase();
+    final isAvailable = !takenUsernames.contains(normalizedUsername);
+
+    if (isAvailable) {
+      return {'available': true};
+    }
+
+    // Generate suggestions for taken usernames
+    final suggestions = _generateUsernameSuggestions(username);
+    return {
+      'available': false,
+      'suggestions': suggestions,
+    };
+  }
+
+  /// Generate username suggestions when the requested username is taken
+  List<String> _generateUsernameSuggestions(String username) {
+    final normalizedUsername = username.toLowerCase();
+    final currentYear = DateTime.now().year;
+
+    // Mix of number and tool-themed suffixes
+    final suggestions = <String>[
+      '${normalizedUsername}_${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}',
+      '${normalizedUsername}_tools',
+      '${normalizedUsername}_$currentYear',
+    ];
+
+    return suggestions.take(3).toList();
+  }
+
+  /// Suggest available usernames based on email
+  String generateUsernameFromEmail(String email) {
+    // Extract prefix from email
+    var username = email.split('@').first.toLowerCase();
+
+    // Remove invalid characters (keep only alphanumeric and underscore)
+    username = username.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+
+    // Ensure minimum length
+    if (username.length < 3) {
+      username = '${username}user';
+    }
+
+    return username;
+  }
+
+  /// Generate a unique username for Google/Magic Link users
+  Future<String> generateUniqueUsername(String email) async {
+    var baseUsername = generateUsernameFromEmail(email);
+
+    // Check if base username is available
+    final result = await checkUsernameAvailability(baseUsername);
+    if (result['available'] == true) {
+      return baseUsername;
+    }
+
+    // If not available, append random number
+    final random = DateTime.now().millisecondsSinceEpoch % 1000;
+    return '${baseUsername}_$random';
   }
 }

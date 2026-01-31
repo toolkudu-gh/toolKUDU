@@ -21,29 +21,29 @@ class BuddiesScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              // Header
+              // Header - now main tab style
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    AppIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      onPressed: () => context.go('/profile'),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Tool Buddies',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTheme.textPrimaryDark
-                              : AppTheme.textPrimaryLight,
-                        ),
+                    Text(
+                      'Tool Buddies',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.textPrimaryDark
+                            : AppTheme.textPrimaryLight,
                       ),
+                    ),
+                    AppIconButton(
+                      icon: Icons.person_add_outlined,
+                      tooltip: 'Find Buddies',
+                      onPressed: () => context.go('/search'),
                     ),
                   ],
                 ),
@@ -150,6 +150,8 @@ class BuddiesScreen extends ConsumerWidget {
             onSelected: (value) {
               if (value == 'view') {
                 context.go('/search/user/${buddy['id']}');
+              } else if (value == 'borrow') {
+                context.go('/search/user/${buddy['id']}?mode=borrow');
               } else if (value == 'remove') {
                 // TODO: Remove buddy
               }
@@ -171,6 +173,24 @@ class BuddiesScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              PopupMenuItem(
+                value: 'borrow',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.handshake_outlined,
+                      size: 20,
+                      color: AppTheme.primaryColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Request Tool',
+                      style: TextStyle(color: AppTheme.primaryColor),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
               PopupMenuItem(
                 value: 'remove',
                 child: Row(

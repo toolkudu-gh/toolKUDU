@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/stat_card.dart';
 import '../../../shared/widgets/app_dialog.dart';
+import '../../../shared/widgets/funny_snackbar.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/utils/responsive.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -172,15 +176,24 @@ class ProfileScreen extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // Edit button
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        label: 'Edit Profile',
-                        variant: AppButtonVariant.outline,
-                        icon: Icons.edit_outlined,
-                        onPressed: () => context.go('/profile/edit'),
-                      ),
+                    // Edit and Share buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'Edit Profile',
+                            variant: AppButtonVariant.outline,
+                            icon: Icons.edit_outlined,
+                            onPressed: () => context.go('/profile/edit'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        AppIconButton(
+                          icon: Icons.share_outlined,
+                          tooltip: 'Share Profile',
+                          onPressed: () => _shareProfile(context, user?.username ?? 'user'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -367,6 +380,27 @@ class ProfileScreen extends ConsumerWidget {
       if (context.mounted) {
         context.go('/login');
       }
+    }
+  }
+
+  Future<void> _shareProfile(BuildContext context, String username) async {
+    final profileUrl = 'https://toolkudu.app/u/$username';
+
+    // On desktop or web, copy to clipboard
+    if (Responsive.isDesktop(context)) {
+      await Clipboard.setData(ClipboardData(text: profileUrl));
+      if (context.mounted) {
+        FunnySnackBar.showSuccess(
+          context,
+          customMessage: "Profile link copied! Share it like a prized power tool!",
+        );
+      }
+    } else {
+      // On mobile, use system share sheet
+      await Share.share(
+        'Check out my profile on ToolKUDU: $profileUrl',
+        subject: 'ToolKUDU Profile',
+      );
     }
   }
 }

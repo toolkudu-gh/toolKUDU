@@ -145,7 +145,93 @@ class _ShareScreenState extends ConsumerState<ShareScreen> with SingleTickerProv
   }
 
   void _startBorrowFlow(BuildContext context) {
-    context.go('/search?mode=borrow');
+    _showBorrowOptionsSheet(context);
+  }
+
+  void _showBorrowOptionsSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Title
+              Text(
+                'Request a Tool',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTheme.textPrimaryDark
+                      : AppTheme.textPrimaryLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Where would you like to browse?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark
+                      ? AppTheme.textSecondaryDark
+                      : AppTheme.textSecondaryLight,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Options
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    _BorrowOptionTile(
+                      icon: Icons.people_outline_rounded,
+                      title: 'From My Buddies',
+                      description: 'Browse tools from people you know',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/buddies');
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _BorrowOptionTile(
+                      icon: Icons.search_rounded,
+                      title: 'Search for Someone',
+                      description: 'Find any user and their available tools',
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/search?mode=borrow');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildRequestsTab(BuildContext context, LendingState state, bool isDark) {
@@ -677,6 +763,106 @@ class _ShareScreenState extends ConsumerState<ShareScreen> with SingleTickerProv
       itemBuilder: (context, index) => const Padding(
         padding: EdgeInsets.only(bottom: 12),
         child: ListTileSkeleton(showTrailing: true),
+      ),
+    );
+  }
+}
+
+class _BorrowOptionTile extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  const _BorrowOptionTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  @override
+  State<_BorrowOptionTile> createState() => _BorrowOptionTileState();
+}
+
+class _BorrowOptionTileState extends State<_BorrowOptionTile> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? AppTheme.primaryColor.withOpacity(isDark ? 0.1 : 0.05)
+                : (isDark ? AppTheme.surfaceElevatedDark : AppTheme.backgroundLight),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            border: Border.all(
+              color: _isHovered
+                  ? AppTheme.primaryColor.withOpacity(0.3)
+                  : (isDark ? AppTheme.borderDark : AppTheme.borderLight),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(
+                  widget.icon,
+                  size: 24,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppTheme.textPrimaryDark
+                            : AppTheme.textPrimaryLight,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? AppTheme.textSecondaryDark
+                            : AppTheme.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark
+                    ? AppTheme.textMutedDark
+                    : AppTheme.textMutedLight,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

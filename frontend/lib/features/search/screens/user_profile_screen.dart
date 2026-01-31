@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/models/toolbox.dart';
 import '../../../core/models/tool.dart';
 import '../../../core/providers/lending_provider.dart';
+import '../../../core/utils/responsive.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -39,7 +42,7 @@ class UserProfileScreen extends ConsumerWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Row(
                 children: [
                   AppIconButton(
@@ -57,6 +60,16 @@ class UserProfileScreen extends ConsumerWidget {
                             ? AppTheme.textPrimaryDark
                             : AppTheme.textPrimaryLight,
                       ),
+                    ),
+                  ),
+                  // Share profile button
+                  userAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (user) => AppIconButton(
+                      icon: Icons.share_outlined,
+                      tooltip: 'Share Profile',
+                      onPressed: () => _shareProfile(context, user.username),
                     ),
                   ),
                 ],
@@ -261,6 +274,7 @@ class UserProfileScreen extends ConsumerWidget {
                                 entry.value,
                                 isDark,
                                 entry.key,
+                                user.isBuddy == true,
                               );
                             }).toList(),
                           );
@@ -283,6 +297,7 @@ class UserProfileScreen extends ConsumerWidget {
     Toolbox toolbox,
     bool isDark,
     int index,
+    bool isBuddy,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -329,7 +344,7 @@ class UserProfileScreen extends ConsumerWidget {
                 height: 1,
                 color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
               ),
-              _buildToolsList(context, ref, toolbox.id, isDark),
+              _buildToolsList(context, ref, toolbox.id, isDark, isBuddy),
             ],
           ),
         ),
@@ -345,6 +360,7 @@ class UserProfileScreen extends ConsumerWidget {
     WidgetRef ref,
     String toolboxId,
     bool isDark,
+    bool isBuddy,
   ) {
     final toolsAsync = ref.watch(toolboxToolsProvider(toolboxId));
 
@@ -375,7 +391,7 @@ class UserProfileScreen extends ConsumerWidget {
           );
         }
         return Column(
-          children: tools.map((tool) => _buildToolTile(context, ref, tool, isDark)).toList(),
+          children: tools.map((tool) => _buildToolTile(context, ref, tool, isDark, isBuddy)).toList(),
         );
       },
     );
@@ -386,6 +402,7 @@ class UserProfileScreen extends ConsumerWidget {
     WidgetRef ref,
     Tool tool,
     bool isDark,
+    bool isBuddy,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -469,7 +486,8 @@ class UserProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          if (tool.isAvailable && borrowMode)
+          // Show Borrow button if tool is available AND (borrowMode OR user is a buddy)
+          if (tool.isAvailable && (borrowMode || isBuddy))
             AppButton(
               label: 'Borrow',
               size: AppButtonSize.sm,
@@ -503,6 +521,27 @@ class UserProfileScreen extends ConsumerWidget {
           FunnySnackBar.networkError(context);
         }
       }
+    }
+  }
+
+  Future<void> _shareProfile(BuildContext context, String username) async {
+    final profileUrl = 'https://toolkudu.app/u/$username';
+
+    // On desktop or web, copy to clipboard
+    if (Responsive.isDesktop(context)) {
+      await Clipboard.setData(ClipboardData(text: profileUrl));
+      if (context.mounted) {
+        FunnySnackBar.showSuccess(
+          context,
+          customMessage: "Profile link copied! Now spread the word like sawdust in a workshop!",
+        );
+      }
+    } else {
+      // On mobile, use system share sheet
+      await Share.share(
+        'Check out my Tool Buddy on ToolKUDU: $profileUrl',
+        subject: 'ToolKUDU Profile',
+      );
     }
   }
 }
