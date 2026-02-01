@@ -11,6 +11,12 @@ class User {
   final bool? isBuddy;
   final DateTime? lastUsernameChange;
 
+  // Location fields
+  final double? latitude;
+  final double? longitude;
+  final String? zipcode;
+  final String? locationSource; // 'gps', 'zipcode', 'manual'
+
   const User({
     required this.id,
     required this.username,
@@ -23,7 +29,14 @@ class User {
     this.isFollowing,
     this.isBuddy,
     this.lastUsernameChange,
+    this.latitude,
+    this.longitude,
+    this.zipcode,
+    this.locationSource,
   });
+
+  /// Check if user has location set
+  bool get hasLocation => latitude != null && longitude != null;
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -40,6 +53,10 @@ class User {
       lastUsernameChange: json['lastUsernameChange'] != null
           ? DateTime.parse(json['lastUsernameChange'] as String)
           : null,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      zipcode: json['zipcode'] as String?,
+      locationSource: json['locationSource'] as String?,
     );
   }
 
@@ -56,6 +73,10 @@ class User {
       'isFollowing': isFollowing,
       'isBuddy': isBuddy,
       'lastUsernameChange': lastUsernameChange?.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'zipcode': zipcode,
+      'locationSource': locationSource,
     };
   }
 
@@ -71,6 +92,10 @@ class User {
     bool? isFollowing,
     bool? isBuddy,
     DateTime? lastUsernameChange,
+    double? latitude,
+    double? longitude,
+    String? zipcode,
+    String? locationSource,
   }) {
     return User(
       id: id ?? this.id,
@@ -84,6 +109,10 @@ class User {
       isFollowing: isFollowing ?? this.isFollowing,
       isBuddy: isBuddy ?? this.isBuddy,
       lastUsernameChange: lastUsernameChange ?? this.lastUsernameChange,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      zipcode: zipcode ?? this.zipcode,
+      locationSource: locationSource ?? this.locationSource,
     );
   }
 

@@ -13,6 +13,7 @@ import '../features/home/screens/add_toolbox_screen.dart';
 import '../features/home/screens/add_tool_screen.dart';
 import '../features/search/screens/search_screen.dart';
 import '../features/search/screens/user_profile_screen.dart';
+import '../features/search/widgets/user_search_dialog.dart';
 import '../features/share/screens/share_screen.dart';
 import '../features/find_tool/screens/find_tool_screen.dart';
 import '../features/find_tool/screens/add_tracker_screen.dart';
@@ -182,6 +183,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: BuddiesScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'find',
+                name: 'find-buddies',
+                builder: (context, state) => const UserSearchDialog(),
+              ),
+            ],
           ),
 
           // Share Tab

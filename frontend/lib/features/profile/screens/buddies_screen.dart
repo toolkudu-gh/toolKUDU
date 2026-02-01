@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/funny_snackbar.dart';
+import '../../search/widgets/user_search_dialog.dart';
 
 class BuddiesScreen extends ConsumerWidget {
   const BuddiesScreen({super.key});
@@ -43,7 +44,7 @@ class BuddiesScreen extends ConsumerWidget {
                     AppIconButton(
                       icon: Icons.person_add_outlined,
                       tooltip: 'Find Buddies',
-                      onPressed: () => context.go('/search'),
+                      onPressed: () => UserSearchDialog.show(context),
                     ),
                   ],
                 ),
@@ -122,7 +123,7 @@ class BuddiesScreen extends ConsumerWidget {
     if (buddies.isEmpty) {
       return EmptyState.noBuddies(
         actionLabel: 'Find Tool Buddies',
-        onAction: () => context.go('/search'),
+        onAction: () => UserSearchDialog.show(context),
       );
     }
 
@@ -285,7 +286,7 @@ class BuddiesScreen extends ConsumerWidget {
         title: 'No sent requests',
         description: 'Your pending buddy requests will appear here',
         actionLabel: 'Find Tool Buddies',
-        onAction: () => context.go('/search'),
+        onAction: () => UserSearchDialog.show(context),
       );
     }
 

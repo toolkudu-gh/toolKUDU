@@ -8,7 +8,9 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/location_permission_dialog.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/location_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +34,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _magicLinkCodeController.dispose();
     super.dispose();
+  }
+
+  /// Show location dialog if user hasn't set location, then navigate to home
+  Future<void> _handleSuccessfulLogin() async {
+    if (!mounted) return;
+
+    // Check if we should prompt for location
+    final shouldPrompt = ref.read(shouldPromptLocationProvider);
+
+    if (shouldPrompt) {
+      // Show the location permission dialog
+      await LocationPermissionDialog.show(context);
+    }
+
+    if (mounted) {
+      context.go('/home');
+    }
   }
 
   bool _validateForm() {
@@ -73,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (mounted) {
       if (success) {
-        context.go('/home');
+        await _handleSuccessfulLogin();
       } else {
         final authState = ref.read(authStateProvider);
         if (authState.requiresEmailVerification) {
@@ -87,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final success = await ref.read(authStateProvider.notifier).signInWithGoogle();
 
     if (success && mounted) {
-      context.go('/home');
+      await _handleSuccessfulLogin();
     }
   }
 
@@ -142,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final success = await ref.read(authStateProvider.notifier).verifyMagicLinkCode(code);
 
     if (success && mounted) {
-      context.go('/home');
+      await _handleSuccessfulLogin();
     }
   }
 

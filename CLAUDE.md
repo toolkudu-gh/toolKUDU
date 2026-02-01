@@ -86,9 +86,43 @@ Located in `frontend/lib/core/utils/funny_messages.dart`:
 - **Borrow Button**: Shows on available tools when viewing a buddy's profile (not just in borrow mode)
 - **Share Profile**: Button on profiles to copy/share profile link
 - **Quick Request**: Share tab FAB offers "From My Buddies" or "Search for Someone"
+- **Find Buddies**: Uses `/buddies/find` route (GoRouter) - opens user search dialog
+
+## Search Tab (Tool Discovery)
+The Search tab is for **location-based tool discovery**, not user search.
+- **Purpose**: Find tools available for borrowing within 100 miles
+- **User Search**: Moved to Buddies tab → "Find Buddies" button → `/buddies/find`
+- **Files**:
+  - `frontend/lib/features/search/screens/search_screen.dart` - Tool search screen
+  - `frontend/lib/features/search/widgets/tool_search_card.dart` - Tool result card with buddy highlight
+  - `frontend/lib/features/search/widgets/user_search_dialog.dart` - User search (accessed from Buddies tab)
+  - `frontend/lib/core/services/tool_search_service.dart` - Tool search API service
+  - `frontend/lib/core/providers/tool_search_provider.dart` - Tool search state management
+  - `frontend/lib/core/models/tool_search_result.dart` - Tool search result model
+- **Features**:
+  - Location indicator showing search area (zipcode)
+  - Category filter chips
+  - Buddy tools highlighted with accent border + "Buddy" chip
+  - Section headers: "From Your Buddies" and "Nearby Tools"
+  - Pagination with infinite scroll
+
+## Location Permission Flow
+- **When**: Popup dialog shown after successful login (Google Sign-In, Magic Link, or regular login)
+- **Trigger**: Only shown if user hasn't set location and hasn't been prompted before
+- **Dialog Options**:
+  1. "Use My Location" → Triggers native OS permission dialog (GPS)
+  2. "Enter Zipcode Instead" → Manual 5-digit zipcode entry with geocoding
+  3. "Skip for Now" → Dismisses dialog, marks as prompted (won't show again)
+- **Files**:
+  - `frontend/lib/shared/widgets/location_permission_dialog.dart` - The popup dialog
+  - `frontend/lib/core/services/location_service.dart` - GPS and geocoding service
+  - `frontend/lib/core/providers/location_provider.dart` - Location state management
+- **User Model**: Includes `latitude`, `longitude`, `zipcode`, `locationSource` fields
+- **Privacy**: Location is only used for finding nearby tools, never shared publicly
 
 ## UI Components
 - **Glassmorphism**: Subtle blur effects on nav bars and optionally on cards (`enableGlass: true`)
 - **Desktop Header**: `frontend/lib/app/desktop_header.dart` - Top nav for web
 - **Account Drawer**: `frontend/lib/shared/widgets/account_drawer.dart` - Sliding drawer for mobile
 - **Responsive Container**: Wraps content with max-width constraints for desktop
+- **Location Permission Dialog**: `frontend/lib/shared/widgets/location_permission_dialog.dart` - Post-login location request

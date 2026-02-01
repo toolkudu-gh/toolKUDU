@@ -4,10 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/location_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_input.dart';
+import '../../../shared/widgets/location_permission_dialog.dart';
 
 class MagicLinkScreen extends ConsumerStatefulWidget {
   const MagicLinkScreen({super.key});
@@ -28,6 +30,23 @@ class _MagicLinkScreenState extends ConsumerState<MagicLinkScreen> {
     _emailController.dispose();
     _codeController.dispose();
     super.dispose();
+  }
+
+  /// Show location dialog if user hasn't set location, then navigate to home
+  Future<void> _handleSuccessfulLogin() async {
+    if (!mounted) return;
+
+    // Check if we should prompt for location
+    final shouldPrompt = ref.read(shouldPromptLocationProvider);
+
+    if (shouldPrompt) {
+      // Show the location permission dialog
+      await LocationPermissionDialog.show(context);
+    }
+
+    if (mounted) {
+      context.go('/home');
+    }
   }
 
   bool _validateEmail() {
@@ -90,7 +109,7 @@ class _MagicLinkScreenState extends ConsumerState<MagicLinkScreen> {
     final success = await ref.read(authStateProvider.notifier).verifyMagicLinkCode(code);
 
     if (success && mounted) {
-      context.go('/home');
+      await _handleSuccessfulLogin();
     }
   }
 

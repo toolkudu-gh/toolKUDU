@@ -176,6 +176,33 @@ class FunnyMessages {
     "No history recorded. Your tools are homebodies... for now.",
   ];
 
+  static String get noNearbyTools => _pickRandom(_noNearbyToolsMessages);
+  static const _noNearbyToolsMessages = [
+    "No tools nearby! Looks like everyone's keeping their tools under wraps.",
+    "The neighborhood is tool-less. Be the first to share!",
+    "Empty streets... of tools. Maybe expand your search?",
+    "No nearby tools found. Your neighbors are holding out on you!",
+    "Tool desert detected! Try a different area or add your own.",
+  ];
+
+  static String get noLocationSet => _pickRandom(_noLocationSetMessages);
+  static const _noLocationSetMessages = [
+    "We need your location to find nearby tools. Don't worry, we won't share your workshop address!",
+    "Where are you? Enable location to discover tools in your area.",
+    "Location unknown! Help us find tools near you.",
+    "GPS signal needed! Let us know where you're building.",
+    "Share your location to unlock the tool treasure map!",
+  ];
+
+  static String get locationSuccess => _pickRandom(_locationSuccessMessages);
+  static const _locationSuccessMessages = [
+    "Location locked in! Now let's find some tools in your area.",
+    "Got it! We can now show you tools within 100 miles.",
+    "You're on the map! Time to explore nearby tools.",
+    "Location saved! Your workshop has been pinpointed.",
+    "Perfect! Now we know where to look for your next tool adventure.",
+  ];
+
   // ==================== CONFIRMATION MESSAGES ====================
 
   static String get deleteTool => _pickRandom(_deleteToolMessages);
