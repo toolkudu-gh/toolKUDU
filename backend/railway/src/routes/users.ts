@@ -29,6 +29,51 @@ function toUserProfile(
   };
 }
 
+// GET /api/users/check-username - Check if username is available (no auth required)
+userRoutes.get('/check-username', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const username = req.query.username as string;
+
+    if (!username || username.length < 3) {
+      throw badRequest('Username must be at least 3 characters');
+    }
+
+    // Validate username format
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return res.json({
+        available: false,
+        error: 'Username can only contain letters, numbers, and underscores',
+      });
+    }
+
+    const existing = await queryOne(
+      'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)',
+      [username]
+    );
+
+    if (existing) {
+      // Generate suggestions
+      const base = username.toLowerCase();
+      const currentYear = new Date().getFullYear();
+      const random = Math.floor(Math.random() * 1000);
+      const suggestions = [
+        `${base}_${random}`,
+        `${base}_tools`,
+        `${base}_${currentYear}`,
+      ];
+
+      return res.json({
+        available: false,
+        suggestions,
+      });
+    }
+
+    res.json({ available: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/users/sync - Sync user from Clerk to database
 userRoutes.post('/sync', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -592,71 +637,6 @@ userRoutes.get('/:userId/toolboxes', optionalAuth, async (req: Request, res: Res
     next(error);
   }
 });
-
-// GET /api/users/check-username - Check if username is available
-userRoutes.get('/check-username', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const username = req.query.username as string;
-
-    if (!username || username.length < 3) {
-      throw badRequest('Username must be at least 3 characters');
-    }
-
-    // Validate username format
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      return res.json({
-        available: false,
-        error: 'Username can only contain letters, numbers, and underscores',
-      });
-    }
-
-    const existing = await queryOne(
-      'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)',
-      [username]
-    );
-
-    if (existing) {
-      // Generate suggestions
-      const suggestions = await generateUsernameSuggestions(username);
-      return res.json({
-        available: false,
-        suggestions,
-      });
-    }
-
-    res.json({ available: true });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Helper: Generate username suggestions
-async function generateUsernameSuggestions(username: string): Promise<string[]> {
-  const base = username.toLowerCase();
-  const currentYear = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 1000);
-
-  const suggestions = [
-    `${base}_${random}`,
-    `${base}_tools`,
-    `${base}_${currentYear}`,
-  ];
-
-  // Filter out taken usernames
-  const available: string[] = [];
-  for (const suggestion of suggestions) {
-    const exists = await queryOne(
-      'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)',
-      [suggestion]
-    );
-    if (!exists) {
-      available.push(suggestion);
-    }
-    if (available.length >= 3) break;
-  }
-
-  return available;
-}
 
 // Helper: Generate username from email
 function generateUsername(email: string): string {
