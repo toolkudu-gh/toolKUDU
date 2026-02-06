@@ -12,6 +12,7 @@ import { userRoutes } from './routes/users';
 import { buddyRoutes } from './routes/buddies';
 import { locationRoutes } from './routes/location';
 import { sharingRoutes } from './routes/sharing';
+import { setupRoutes } from './routes/setup';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,7 @@ app.use(clerkMiddleware());
 
 // Routes
 app.use('/api/health', healthRoutes);
+app.use('/api/setup', setupRoutes);
 app.use('/api/toolboxes', toolboxRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/users', userRoutes);
