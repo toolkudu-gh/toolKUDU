@@ -33,10 +33,10 @@ class CognitoConfig {
     defaultValue: '492727045513-ppmj753k9nerb15i4tcnu8ipgvvhjnr1.apps.googleusercontent.com',
   );
 
-  // API Gateway Base URL
+  // API Gateway Base URL (Railway backend)
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.toolkudu.com',
+    defaultValue: 'https://toolkudu-api-production.up.railway.app',
   );
 
   // Check if we're in development mode (mock auth)

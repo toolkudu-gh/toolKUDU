@@ -141,8 +141,8 @@ class ApiException implements Exception {
 
 // API service provider
 final apiServiceProvider = Provider<ApiService>((ref) {
-  // TODO: Replace with actual API URL from environment
-  const baseUrl = 'https://api.toolkudu.com';
+  // Railway backend URL
+  const baseUrl = 'https://toolkudu-api-production.up.railway.app';
   final accessToken = ref.watch(accessTokenProvider);
 
   return ApiService(
