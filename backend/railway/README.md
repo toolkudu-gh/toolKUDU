@@ -104,14 +104,96 @@ npm start
 
 ## Railway Deployment
 
-1. Create a new project on Railway
-2. Add PostgreSQL database
-3. Connect this repository
-4. Set root directory to `backend/railway`
-5. Add environment variables
-6. Deploy!
+### Prerequisites
 
-Railway auto-detects the Dockerfile and deploys accordingly.
+1. **Railway Account**: Sign up at [railway.app](https://railway.app) (GitHub login recommended)
+2. **Clerk Account**: Sign up at [clerk.com](https://clerk.com)
+3. **Cloudflare R2**: Sign up at [cloudflare.com](https://cloudflare.com) and create an R2 bucket
+
+### Step 1: Install Railway CLI
+
+```bash
+npm install -g @railway/cli
+```
+
+### Step 2: Get Your API Token
+
+1. Go to [railway.app](https://railway.app) → Login
+2. Click profile icon (bottom left) → Account Settings → Tokens
+3. Click "Create Token" → Name it "ToolKUDU CLI"
+4. Copy the token
+
+### Step 3: Deploy via CLI
+
+```bash
+# Navigate to railway folder
+cd backend/railway
+
+# Login with token
+railway login --token YOUR_RAILWAY_TOKEN
+
+# Create new project
+railway init --name toolkudu-api
+
+# Add PostgreSQL (DATABASE_URL is auto-set)
+railway add --plugin postgresql
+
+# Set environment variables
+railway variables set CLERK_PUBLISHABLE_KEY=pk_test_xxx
+railway variables set CLERK_SECRET_KEY=sk_test_xxx
+railway variables set CLOUDFLARE_ACCOUNT_ID=xxx
+railway variables set R2_ACCESS_KEY_ID=xxx
+railway variables set R2_SECRET_ACCESS_KEY=xxx
+railway variables set R2_BUCKET_NAME=toolkudu-images
+railway variables set R2_PUBLIC_URL=https://pub-xxx.r2.dev
+railway variables set NODE_ENV=production
+railway variables set ALLOWED_ORIGINS=*
+
+# Deploy
+railway up
+
+# Get your deployment URL
+railway domain
+```
+
+### Step 4: Run Database Migrations
+
+```bash
+# Run migrations on Railway
+railway run npm run db:migrate
+```
+
+### Step 5: Verify Deployment
+
+```bash
+curl https://YOUR-APP.railway.app/api/health
+```
+
+Expected response:
+```json
+{"status":"healthy","database":"connected","timestamp":"..."}
+```
+
+### Alternative: GitHub Deployment
+
+1. Push code to GitHub
+2. In Railway dashboard: New Project → Deploy from GitHub repo
+3. Set root directory to `backend/railway`
+4. Add PostgreSQL plugin
+5. Set environment variables in Railway dashboard
+6. Railway auto-deploys on push
+
+### Credentials Checklist
+
+| Service | What You Need | Where to Get It |
+|---------|---------------|-----------------|
+| Railway | API Token | railway.app → Account Settings → Tokens |
+| Clerk | Publishable Key | clerk.com → API Keys |
+| Clerk | Secret Key | clerk.com → API Keys |
+| Cloudflare | Account ID | Dashboard URL or Overview page |
+| Cloudflare R2 | Access Key ID | R2 → Manage API Tokens |
+| Cloudflare R2 | Secret Access Key | R2 → Token creation |
+| Cloudflare R2 | Bucket Name | Create in R2 dashboard |
 
 ## Architecture
 
