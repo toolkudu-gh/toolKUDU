@@ -28,10 +28,12 @@ dependencies:
   # Networking
   dio: ^5.4.0
 
-  # Authentication
-  amazon_cognito_identity_dart_2: ^3.6.5
+  # Authentication (Clerk)
   flutter_secure_storage: ^9.0.0
   google_sign_in: ^6.2.1
+  url_launcher: ^6.2.5
+  uni_links: ^0.5.1
+  webview_flutter: ^4.7.0
 
   # Local Storage
   shared_preferences: ^2.2.2
