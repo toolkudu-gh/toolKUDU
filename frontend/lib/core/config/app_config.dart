@@ -26,6 +26,6 @@ class AppConfig {
   // Feature flags
   static const bool enableMockAuth = bool.fromEnvironment(
     'ENABLE_MOCK_AUTH',
-    defaultValue: true, // Keep mock auth enabled until Clerk is fully integrated
+    defaultValue: false, // Use real backend - mock auth disabled in production
   );
 }
