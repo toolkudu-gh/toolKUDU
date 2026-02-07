@@ -241,38 +241,7 @@ class ClerkAuthService {
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Exchange Google token with Clerk
-      final response = await _clerkApi.post(
-        '$_clerkFrontendApi/v1/sign_ins',
-        data: {
-          'strategy': 'oauth_google',
-          'redirect_url': 'toolkudu://oauth-callback',
-          'token': googleAuth.idToken,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final sessionToken = data['created_session_id'] ?? googleAuth.accessToken;
-
-        final userData = {
-          'email': googleUser.email,
-          'displayName': googleUser.displayName,
-          'avatarUrl': googleUser.photoUrl,
-          'provider': 'google',
-        };
-
-        await _saveSession(sessionToken: sessionToken!, userData: userData);
-        await _syncUserWithBackend(userData);
-
-        return {
-          'success': true,
-          'accessToken': sessionToken,
-          'user': userData,
-        };
-      }
-
-      // Fallback: Use Google token directly and sync with backend
+      // Use Google token directly and sync with backend (skip Clerk frontend API)
       final userData = {
         'email': googleUser.email,
         'displayName': googleUser.displayName,
@@ -280,14 +249,17 @@ class ClerkAuthService {
         'provider': 'google',
       };
 
-      final sessionToken = 'google_${googleAuth.accessToken}';
+      final sessionToken = 'google_${googleAuth.accessToken ?? DateTime.now().millisecondsSinceEpoch}';
       await _saveSession(sessionToken: sessionToken, userData: userData);
-      await _syncUserWithBackend(userData);
+
+      // Sync with backend - this creates/updates user in our database
+      final syncResult = await _syncUserWithBackend(userData);
 
       return {
         'success': true,
         'accessToken': sessionToken,
-        'user': userData,
+        'user': syncResult ?? userData,
+        'isNewUser': syncResult?['isNewUser'] ?? true,
       };
     } catch (e) {
       return {'success': false, 'error': 'Google sign-in failed: $e'};
@@ -389,9 +361,40 @@ class ClerkAuthService {
     await clearSession();
   }
 
-  /// Get current user
+  /// Get current user - fetches from backend if session token available
   Future<User?> getCurrentUser() async {
     try {
+      final sessionToken = await getSessionToken();
+
+      // Try to fetch from backend if we have a session token
+      if (sessionToken != null && sessionToken.startsWith('session_')) {
+        try {
+          _backendApi.options.headers['Authorization'] = 'Bearer $sessionToken';
+          final response = await _backendApi.get('/api/users/me/session');
+
+          if (response.statusCode == 200) {
+            final data = response.data as Map<String, dynamic>;
+            // Update stored user data
+            await storage.write(key: _userDataKey, value: jsonEncode(data));
+
+            return User(
+              id: data['id']?.toString() ?? '',
+              username: data['username'] ?? 'user',
+              email: data['email']?.toString() ?? '',
+              displayName: data['displayName'] ?? data['display_name'],
+              avatarUrl: data['avatarUrl'] ?? data['avatar_url'],
+              bio: data['bio'],
+              toolboxCount: data['toolboxCount'] ?? 0,
+              toolCount: data['toolCount'] ?? 0,
+            );
+          }
+        } catch (e) {
+          print('Failed to fetch user from backend: $e');
+          // Fall through to local data
+        }
+      }
+
+      // Fallback to stored local data
       final userData = await storage.read(key: _userDataKey);
       if (userData == null) return null;
 
@@ -410,24 +413,36 @@ class ClerkAuthService {
     }
   }
 
-  /// Sync user with backend
-  Future<void> _syncUserWithBackend(Map<String, dynamic> userData) async {
+  /// Sync user with backend - returns user data from backend
+  Future<Map<String, dynamic>?> _syncUserWithBackend(Map<String, dynamic> userData) async {
     try {
-      final sessionToken = await getSessionToken();
-      if (sessionToken == null) return;
+      final email = userData['email'] ?? userData['email_addresses']?[0]?['email_address'];
 
-      _backendApi.options.headers['Authorization'] = 'Bearer $sessionToken';
-
-      await _backendApi.post('/api/users/sync', data: {
-        'clerk_id': userData['id'] ?? userData['clerk_id'],
-        'email': userData['email'] ?? userData['email_addresses']?[0]?['email_address'],
-        'username': userData['username'] ?? userData['email']?.toString().split('@').first,
-        'display_name': userData['displayName'] ?? userData['first_name'],
-        'avatar_url': userData['avatarUrl'] ?? userData['image_url'],
+      // Call the google-auth endpoint (no Clerk auth required)
+      final response = await _backendApi.post('/api/users/google-auth', data: {
+        'email': email,
+        'displayName': userData['displayName'] ?? userData['first_name'],
+        'avatarUrl': userData['avatarUrl'] ?? userData['image_url'],
+        'googleId': userData['googleId'] ?? email?.hashCode.toString(),
       });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final backendUser = response.data as Map<String, dynamic>;
+
+        // Update session token if provided
+        if (backendUser['sessionToken'] != null) {
+          await storage.write(key: _sessionTokenKey, value: backendUser['sessionToken']);
+        }
+
+        // Update stored user data with backend response
+        await storage.write(key: _userDataKey, value: jsonEncode(backendUser));
+        return backendUser;
+      }
+      return null;
     } catch (e) {
-      // Silently fail - user can still use the app
+      // Silently fail - user can still use the app with local data
       print('Failed to sync user with backend: $e');
+      return null;
     }
   }
 

@@ -29,6 +29,125 @@ function toUserProfile(
   };
 }
 
+// GET /api/users/me/session - Get current user by session token (no Clerk required)
+userRoutes.get('/me/session', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No session token provided' });
+    }
+
+    const sessionToken = authHeader.split(' ')[1];
+
+    // Extract user ID from session token (format: session_<userId>_<timestamp> or google_<token>)
+    let userId: string | null = null;
+
+    if (sessionToken.startsWith('session_')) {
+      // Format: session_<userId>_<timestamp>
+      const parts = sessionToken.split('_');
+      if (parts.length >= 2) {
+        userId = parts[1];
+      }
+    }
+
+    if (!userId || !isValidUUID(userId)) {
+      return res.status(401).json({ error: 'Invalid session token' });
+    }
+
+    const user = await queryOne<User & { followers_count: string; following_count: string }>(
+      `SELECT u.*,
+        (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count,
+        (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
+       FROM users u
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get toolbox and tool counts
+    const statsResult = await queryOne<{ toolbox_count: string; tool_count: string }>(
+      `SELECT
+        (SELECT COUNT(*) FROM toolboxes WHERE user_id = $1) as toolbox_count,
+        (SELECT COUNT(*) FROM tools t JOIN toolboxes tb ON t.toolbox_id = tb.id WHERE tb.user_id = $1) as tool_count`,
+      [userId]
+    );
+
+    res.json({
+      ...toUserProfile(user),
+      toolboxCount: parseInt(statsResult?.toolbox_count || '0'),
+      toolCount: parseInt(statsResult?.tool_count || '0'),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/users/google-auth - Authenticate with Google token (no Clerk required)
+userRoutes.post('/google-auth', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, displayName, avatarUrl, googleId } = req.body;
+
+    if (!email) {
+      throw badRequest('Email is required');
+    }
+
+    // Check if user exists by email
+    let user = await queryOne<User & { followers_count: string; following_count: string }>(
+      `SELECT u.*,
+        (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count,
+        (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
+       FROM users u
+       WHERE u.email = $1`,
+      [email]
+    );
+
+    let isNewUser = false;
+
+    if (!user) {
+      // Create new user
+      isNewUser = true;
+      const username = generateUsername(email);
+      const clerkId = `google_${googleId || email.replace(/[^a-z0-9]/gi, '_')}`;
+
+      user = await queryReturning<User & { followers_count: string; following_count: string }>(
+        `INSERT INTO users (clerk_id, email, username, display_name, avatar_url)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *,
+           0 as followers_count,
+           0 as following_count`,
+        [clerkId, email, username, displayName || username, avatarUrl || null]
+      );
+
+      if (!user) {
+        throw badRequest('Failed to create user');
+      }
+    } else {
+      // Update avatar if provided and not set
+      if (avatarUrl && !user.avatar_url) {
+        await query(
+          'UPDATE users SET avatar_url = $1 WHERE id = $2',
+          [avatarUrl, user.id]
+        );
+        user.avatar_url = avatarUrl;
+      }
+    }
+
+    // Generate a simple session token for this user
+    const sessionToken = `session_${user.id}_${Date.now()}`;
+
+    res.json({
+      ...toUserProfile(user),
+      sessionToken,
+      isNewUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/users/check-username - Check if username is available (no auth required)
 userRoutes.get('/check-username', async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -11,6 +11,10 @@ class User {
   final bool? isBuddy;
   final DateTime? lastUsernameChange;
 
+  // Stats
+  final int toolboxCount;
+  final int toolCount;
+
   // Location fields
   final double? latitude;
   final double? longitude;
@@ -29,6 +33,8 @@ class User {
     this.isFollowing,
     this.isBuddy,
     this.lastUsernameChange,
+    this.toolboxCount = 0,
+    this.toolCount = 0,
     this.latitude,
     this.longitude,
     this.zipcode,
@@ -53,6 +59,8 @@ class User {
       lastUsernameChange: json['lastUsernameChange'] != null
           ? DateTime.parse(json['lastUsernameChange'] as String)
           : null,
+      toolboxCount: json['toolboxCount'] as int? ?? 0,
+      toolCount: json['toolCount'] as int? ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       zipcode: json['zipcode'] as String?,
@@ -73,6 +81,8 @@ class User {
       'isFollowing': isFollowing,
       'isBuddy': isBuddy,
       'lastUsernameChange': lastUsernameChange?.toIso8601String(),
+      'toolboxCount': toolboxCount,
+      'toolCount': toolCount,
       'latitude': latitude,
       'longitude': longitude,
       'zipcode': zipcode,
@@ -92,6 +102,8 @@ class User {
     bool? isFollowing,
     bool? isBuddy,
     DateTime? lastUsernameChange,
+    int? toolboxCount,
+    int? toolCount,
     double? latitude,
     double? longitude,
     String? zipcode,
@@ -109,6 +121,8 @@ class User {
       isFollowing: isFollowing ?? this.isFollowing,
       isBuddy: isBuddy ?? this.isBuddy,
       lastUsernameChange: lastUsernameChange ?? this.lastUsernameChange,
+      toolboxCount: toolboxCount ?? this.toolboxCount,
+      toolCount: toolCount ?? this.toolCount,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       zipcode: zipcode ?? this.zipcode,
