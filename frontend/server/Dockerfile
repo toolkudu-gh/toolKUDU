@@ -3,10 +3,10 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy server and web build
 COPY server.js ./
@@ -16,4 +16,4 @@ COPY web ./web
 EXPOSE 8080
 
 # Start server
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
