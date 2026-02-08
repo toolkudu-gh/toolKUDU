@@ -33,13 +33,14 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- Preload Clerk JS SDK for faster OAuth initialization -->
-  <link rel="preload" href="https://cdn.clerk.com/clerk.browser.js" as="script" crossorigin="anonymous">
+  <link rel="preload" href="https://certain-akita-64.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js" as="script" crossorigin="anonymous">
 
   <!-- Clerk JS SDK - loads synchronously before Flutter to ensure availability -->
   <script
     crossorigin="anonymous"
     data-clerk-publishable-key="pk_test_Y2VydGFpbi1ha2l0YS02NC5jbGVyay5hY2NvdW50cy5kZXYk"
-    src="https://cdn.clerk.com/clerk.browser.js"
+    src="https://certain-akita-64.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+    type="text/javascript"
     onload="window.clerkLoaded = true; console.log('[Clerk] SDK loaded successfully');"
     onerror="console.error('[Clerk] SDK failed to load from CDN'); window.clerkLoadError = true;"
   ></script>
