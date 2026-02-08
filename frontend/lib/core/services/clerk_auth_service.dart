@@ -25,12 +25,16 @@ class ClerkAuthService {
   // Clerk Frontend API base URL (extracted from publishable key)
   String get _clerkFrontendApi {
     // pk_test_Y2VydGFpbi1ha2l0YS02NC5jbGVyay5hY2NvdW50cy5kZXYk
-    // Decode: certain-akita-64.clerk.accounts.dev
+    // Decode: certain-akita-64.clerk.accounts.dev (with trailing $)
     try {
       final keyPart = AppConfig.clerkPublishableKey
           .replaceFirst('pk_test_', '')
           .replaceFirst('pk_live_', '');
-      final decoded = utf8.decode(base64.decode(keyPart));
+      var decoded = utf8.decode(base64.decode(keyPart));
+      // Remove trailing $ that Clerk adds to the encoded domain
+      if (decoded.endsWith('\$')) {
+        decoded = decoded.substring(0, decoded.length - 1);
+      }
       return 'https://$decoded';
     } catch (e) {
       return 'https://certain-akita-64.clerk.accounts.dev';
