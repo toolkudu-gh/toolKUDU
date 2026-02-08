@@ -46,6 +46,7 @@ frontend/coverage/
 *.pem
 *.key
 .claude/
+screenshots/
 
 # Temp files
 tmpclaude-*

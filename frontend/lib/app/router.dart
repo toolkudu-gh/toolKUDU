@@ -113,10 +113,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'auth-callback',
         builder: (context, state) {
           // Extract OAuth callback parameters from URL
+          // Clerk sends __clerk_db_jwt (dev JWT) and __clerk_handshake (contains session cookies)
           final queryParams = state.uri.queryParameters;
           return OAuthCallbackScreen(
-            sessionToken: queryParams['__clerk_session_token'] ?? queryParams['session_token'],
-            sessionId: queryParams['__clerk_session_id'] ?? queryParams['session_id'],
+            sessionToken: queryParams['__clerk_db_jwt'] ??
+                queryParams['__clerk_session_token'] ??
+                queryParams['session_token'],
+            sessionId: queryParams['__clerk_session_id'] ??
+                queryParams['session_id'],
+            handshakeToken: queryParams['__clerk_handshake'],
             code: queryParams['code'],
             error: queryParams['error'],
           );

@@ -54,11 +54,13 @@ class AuthService {
   Future<Map<String, dynamic>> handleOAuthCallback({
     String? sessionToken,
     String? sessionId,
+    String? handshakeToken,
     String? code,
   }) async {
     return await _clerkAuth.handleOAuthCallback(
       sessionToken: sessionToken,
       sessionId: sessionId,
+      handshakeToken: handshakeToken,
       code: code,
     );
   }

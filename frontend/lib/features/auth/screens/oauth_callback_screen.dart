@@ -13,6 +13,7 @@ import '../../../core/providers/location_provider.dart';
 class OAuthCallbackScreen extends ConsumerStatefulWidget {
   final String? sessionToken;
   final String? sessionId;
+  final String? handshakeToken;
   final String? code;
   final String? error;
 
@@ -20,6 +21,7 @@ class OAuthCallbackScreen extends ConsumerStatefulWidget {
     super.key,
     this.sessionToken,
     this.sessionId,
+    this.handshakeToken,
     this.code,
     this.error,
   });
@@ -52,6 +54,7 @@ class _OAuthCallbackScreenState extends ConsumerState<OAuthCallbackScreen> {
     final success = await ref.read(authStateProvider.notifier).handleOAuthCallback(
       sessionToken: widget.sessionToken,
       sessionId: widget.sessionId,
+      handshakeToken: widget.handshakeToken,
       code: widget.code,
     );
 

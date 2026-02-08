@@ -231,9 +231,15 @@ class ClerkAuthService {
               data['created_session_id'] ?? data['session_token'];
           final userData = data['user'] ?? {'email': email};
 
+          if (sessionToken == null || (sessionToken as String).isEmpty) {
+            return {
+              'success': false,
+              'error': 'No valid session token received from server',
+            };
+          }
+
           await _saveSession(
-            sessionToken: sessionToken ??
-                'session_${DateTime.now().millisecondsSinceEpoch}',
+            sessionToken: sessionToken,
             userData: userData,
           );
 
@@ -303,17 +309,34 @@ class ClerkAuthService {
     String? code,
     String? sessionId,
     String? sessionToken,
+    String? handshakeToken,
   }) async {
     try {
       String? jwt;
       Map<String, dynamic> userData = {};
 
       // If we have a session token that looks like a JWT (starts with ey), use it directly
+      // This handles __clerk_db_jwt which is the development JWT token
       if (sessionToken != null && sessionToken.startsWith('ey')) {
         jwt = sessionToken;
       }
+
+      // If we have a handshake token, decode it to extract the session JWT
+      // The handshake JWT contains a 'handshake' claim with cookie instructions
+      // One of those cookies is __session which contains the actual session JWT
+      if (jwt == null && handshakeToken != null && handshakeToken.isNotEmpty) {
+        try {
+          final extractedJwt = _extractSessionFromHandshake(handshakeToken);
+          if (extractedJwt != null) {
+            jwt = extractedJwt;
+          }
+        } catch (e) {
+          print('Failed to decode handshake token: $e');
+        }
+      }
+
       // If we have a session ID, get the JWT from Clerk
-      else if (sessionId != null && sessionId.isNotEmpty) {
+      if (jwt == null && sessionId != null && sessionId.isNotEmpty) {
         // Get JWT token from Clerk's session token endpoint
         try {
           final tokenResponse = await _clerkApi.post(
@@ -339,8 +362,9 @@ class ClerkAuthService {
           print('Failed to get session details: $e');
         }
       }
+
       // Try using the session token as-is (might work for some Clerk configurations)
-      else if (sessionToken != null && sessionToken.isNotEmpty) {
+      if (jwt == null && sessionToken != null && sessionToken.isNotEmpty) {
         jwt = sessionToken;
       }
 
@@ -369,6 +393,50 @@ class ClerkAuthService {
       return _handleDioError(e, 'OAuth callback failed');
     } catch (e) {
       return {'success': false, 'error': 'OAuth callback failed: $e'};
+    }
+  }
+
+  /// Extract session JWT from Clerk handshake token
+  /// The handshake JWT contains a 'handshake' claim with cookie instructions
+  /// like: ["__session=eyJ...; Path=/; ..."]
+  String? _extractSessionFromHandshake(String handshakeToken) {
+    try {
+      final parts = handshakeToken.split('.');
+      if (parts.length < 2) return null;
+
+      // Decode the JWT payload (base64)
+      String payloadBase64 = parts[1];
+      // Add padding if needed
+      while (payloadBase64.length % 4 != 0) {
+        payloadBase64 += '=';
+      }
+
+      final payloadBytes = base64.decode(payloadBase64);
+      final payloadString = utf8.decode(payloadBytes);
+      final payload = jsonDecode(payloadString) as Map<String, dynamic>;
+
+      // The handshake claim contains an array of cookie strings
+      final handshake = payload['handshake'] as List?;
+      if (handshake == null) return null;
+
+      // Find the __session cookie
+      for (final cookie in handshake) {
+        final cookieStr = cookie.toString();
+        if (cookieStr.startsWith('__session=')) {
+          // Extract the JWT value (before the first semicolon)
+          final value = cookieStr.substring('__session='.length);
+          final semicolonIndex = value.indexOf(';');
+          if (semicolonIndex > 0) {
+            return value.substring(0, semicolonIndex);
+          }
+          return value;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error extracting session from handshake: $e');
+      return null;
     }
   }
 
@@ -421,9 +489,15 @@ class ClerkAuthService {
         final data = response.data;
 
         if (data['status'] == 'complete') {
-          final sessionToken = data['created_session_id'] ??
-              'magic_${DateTime.now().millisecondsSinceEpoch}';
+          final sessionToken = data['created_session_id'] ?? data['session_token'];
           final userData = data['user'] ?? {'email': email};
+
+          if (sessionToken == null || (sessionToken as String).isEmpty) {
+            return {
+              'success': false,
+              'error': 'No valid session token received from server',
+            };
+          }
 
           await _saveSession(sessionToken: sessionToken, userData: userData);
           await _syncUserWithBackend();

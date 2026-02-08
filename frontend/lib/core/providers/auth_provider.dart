@@ -279,6 +279,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> handleOAuthCallback({
     String? sessionToken,
     String? sessionId,
+    String? handshakeToken,
     String? code,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -287,6 +288,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final result = await _authService.handleOAuthCallback(
         sessionToken: sessionToken,
         sessionId: sessionId,
+        handshakeToken: handshakeToken,
         code: code,
       );
 
