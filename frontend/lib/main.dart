@@ -38,12 +38,16 @@ class ToolKuduApp extends ConsumerWidget {
       builder: (context, child) {
         return Consumer(
           builder: (context, ref, _) {
+            final isInitializing = ref.watch(
+              authStateProvider.select((s) => s.isInitializing),
+            );
             final isRedirecting = ref.watch(
               authStateProvider.select((s) => s.isOAuthRedirecting),
             );
-            if (!isRedirecting) return child!;
+            if (!isInitializing && !isRedirecting) return child!;
 
             final isDark = Theme.of(context).brightness == Brightness.dark;
+            final message = isRedirecting ? 'Redirecting to Google...' : 'Loading...';
             return Stack(
               children: [
                 child!,
@@ -57,7 +61,7 @@ class ToolKuduApp extends ConsumerWidget {
                           CircularProgressIndicator(color: AppTheme.primaryColor),
                           const SizedBox(height: 16),
                           Text(
-                            'Redirecting to Google...',
+                            message,
                             style: TextStyle(
                               color: isDark ? AppTheme.textSecondaryDark : AppTheme.textSecondaryLight,
                             ),

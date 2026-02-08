@@ -20,6 +20,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
 class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
+  final bool isInitializing;
   final User? user;
   final String? accessToken;
   final String? error;
@@ -30,6 +31,7 @@ class AuthState {
   const AuthState({
     this.isAuthenticated = false,
     this.isLoading = false,
+    this.isInitializing = false,
     this.user,
     this.accessToken,
     this.error,
@@ -41,6 +43,7 @@ class AuthState {
   AuthState copyWith({
     bool? isAuthenticated,
     bool? isLoading,
+    bool? isInitializing,
     User? user,
     String? accessToken,
     String? error,
@@ -51,6 +54,7 @@ class AuthState {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
+      isInitializing: isInitializing ?? this.isInitializing,
       user: user ?? this.user,
       accessToken: accessToken ?? this.accessToken,
       error: error,
@@ -65,7 +69,7 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
 
-  AuthNotifier(this._authService) : super(const AuthState()) {
+  AuthNotifier(this._authService) : super(const AuthState(isInitializing: true)) {
     // Defer auth check to after the first frame to avoid modifying state during build phase
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _checkAuthStatus();
