@@ -245,56 +245,33 @@ class ClerkAuthService {
     }
   }
 
-  /// Sign in with Google - uses Clerk Frontend API to initiate OAuth
+  /// Sign in with Google - redirects to Clerk's hosted sign-in page
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      final redirectUrl = '$_webBaseUrl/auth/callback';
+      final redirectUrl = Uri.encodeComponent('$_webBaseUrl/auth/callback');
 
-      // Step 1: Create a sign-in with Clerk using OAuth strategy
-      final response = await _clerkApi.post(
-        '$_clerkFrontendApi/v1/client/sign_ins',
-        data: {
-          'strategy': 'oauth_google',
-          'redirect_url': redirectUrl,
-          'action_complete_redirect_url': redirectUrl,
-        },
-      );
+      // Use Clerk's hosted sign-in page with Google OAuth
+      // Format: https://<clerk-domain>/sign-in#/?redirect_url=<url>
+      final clerkSignInUrl = '$_clerkFrontendApi/sign-in'
+          '?redirect_url=$redirectUrl';
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
+      // For web: redirect to Clerk hosted sign-in
+      if (kIsWeb) {
+        platform.redirectTo(clerkSignInUrl);
+        return {'success': true, 'redirecting': true};
+      }
 
-        // Get the external verification redirect URL (Google OAuth URL)
-        final firstFactor = data['first_factor_verification'];
-        final externalRedirectUrl = firstFactor?['external_verification_redirect_url']
-            ?? data['external_verification_redirect_url'];
-
-        if (externalRedirectUrl != null && externalRedirectUrl.isNotEmpty) {
-          // Step 2: Redirect to Google OAuth
-          if (kIsWeb) {
-            platform.redirectTo(externalRedirectUrl);
-            return {'success': true, 'redirecting': true};
-          }
-
-          final uri = Uri.parse(externalRedirectUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            return {'success': true, 'redirecting': true};
-          }
-        }
-
-        return {
-          'success': false,
-          'error': 'Could not get Google sign-in URL from Clerk',
-        };
+      // For mobile: use url_launcher
+      final uri = Uri.parse(clerkSignInUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return {'success': true, 'redirecting': true};
       }
 
       return {
         'success': false,
-        'error': 'Failed to initiate Google sign-in',
+        'error': 'Could not open browser for sign-in',
       };
-    } on DioException catch (e) {
-      print('Clerk OAuth error: ${e.response?.data}');
-      return _handleDioError(e, 'Google sign-in failed');
     } catch (e) {
       return {'success': false, 'error': 'Google sign-in failed: $e'};
     }
