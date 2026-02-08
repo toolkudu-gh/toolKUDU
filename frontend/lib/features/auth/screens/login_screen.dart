@@ -25,6 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _magicLinkCodeController = TextEditingController();
   bool _showMagicLinkInput = false;
+  bool _isRedirectingToGoogle = false;
   String? _emailError;
   String? _passwordError;
 
@@ -103,10 +104,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    setState(() => _isRedirectingToGoogle = true);
+
     final success = await ref.read(authStateProvider.notifier).signInWithGoogle();
 
     if (success && mounted) {
       await _handleSuccessfulLogin();
+    } else if (mounted) {
+      setState(() => _isRedirectingToGoogle = false);
     }
   }
 
@@ -128,27 +133,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         child: Opacity(
           opacity: isDisabled ? 0.5 : 1.0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/chrome_logo.png',
-                width: 20,
-                height: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Google',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppTheme.textPrimaryDark
-                      : AppTheme.textPrimaryLight,
+          child: _isRedirectingToGoogle
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: isDark
+                            ? AppTheme.textSecondaryDark
+                            : AppTheme.textSecondaryLight,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Redirecting...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppTheme.textSecondaryDark
+                            : AppTheme.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/chrome_logo.png',
+                      width: 20,
+                      height: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Google',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppTheme.textPrimaryDark
+                            : AppTheme.textPrimaryLight,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );

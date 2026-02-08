@@ -214,6 +214,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     try {
       final result = await _authService.signInWithGoogle();
+
+      // If redirecting to Google OAuth, keep loading state - don't set authenticated
+      if (result['redirecting'] == true) {
+        // Browser will redirect, keep showing loading on login screen
+        return false;
+      }
+
       if (result['success'] == true) {
         final user = await _authService.getCurrentUser();
         state = AuthState(
