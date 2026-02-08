@@ -214,15 +214,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // Google Sign-In
   Future<bool> signInWithGoogle() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, error: null, isOAuthRedirecting: true);
 
     try {
       final result = await _authService.signInWithGoogle();
 
-      // If redirecting to Google OAuth, keep loading state - don't set authenticated
+      // If redirecting to Google OAuth, flag already set - just return
       if (result['redirecting'] == true) {
-        // Browser will redirect, keep showing loading on login screen
-        state = state.copyWith(isOAuthRedirecting: true);
         return false;
       }
 

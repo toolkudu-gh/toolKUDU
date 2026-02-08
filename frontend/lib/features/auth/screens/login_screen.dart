@@ -111,7 +111,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       await _handleSuccessfulLogin();
     } else if (mounted) {
-      setState(() => _isRedirectingToGoogle = false);
+      final isRedirecting = ref.read(authStateProvider).isOAuthRedirecting;
+      if (!isRedirecting) {
+        setState(() => _isRedirectingToGoogle = false);
+      }
     }
   }
 
