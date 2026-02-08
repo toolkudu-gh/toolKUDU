@@ -272,23 +272,36 @@ class ClerkAuthService {
     }
   }
 
-  /// Sign in with Google - redirects to Clerk's Account Portal sign-in page
+  /// Sign in with Google using Clerk JS SDK (web) or Account Portal (mobile)
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      final redirectUrl = Uri.encodeComponent('$_webBaseUrl/auth/callback');
+      final redirectUrl = '$_webBaseUrl/auth/callback';
 
-      // Use Clerk's Account Portal hosted sign-in page
-      // Format: https://<instance>.accounts.dev/sign-in?redirect_url=<url>
-      final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
-          '?redirect_url=$redirectUrl';
-
-      // For web: redirect to Clerk hosted sign-in
+      // For web: Use Clerk JS SDK for proper OAuth flow
       if (kIsWeb) {
+        final loaded = await platform.waitForClerk();
+        if (loaded) {
+          try {
+            await platform.clerkSignInWithGoogle(redirectUrl);
+            return {'success': true, 'redirecting': true};
+          } catch (e) {
+            print('Clerk JS SDK OAuth failed: $e, falling back to Account Portal');
+            // Fall through to Account Portal redirect
+          }
+        }
+
+        // Fallback: Use Clerk's Account Portal hosted sign-in page
+        final encodedRedirect = Uri.encodeComponent(redirectUrl);
+        final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
+            '?redirect_url=$encodedRedirect';
         platform.redirectTo(clerkSignInUrl);
         return {'success': true, 'redirecting': true};
       }
 
-      // For mobile: use url_launcher
+      // For mobile: use url_launcher with Account Portal
+      final encodedRedirect = Uri.encodeComponent(redirectUrl);
+      final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
+          '?redirect_url=$encodedRedirect';
       final uri = Uri.parse(clerkSignInUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -319,9 +332,28 @@ class ClerkAuthService {
           'handshake: ${handshakeToken != null ? 'present' : 'null'}, '
           'sessionId: $sessionId');
 
+      // Priority 0: On web, try to get session from Clerk JS SDK first
+      // This is the most reliable method when using the JS SDK
+      if (kIsWeb) {
+        final loaded = await platform.waitForClerk();
+        if (loaded) {
+          // Check if Clerk JS SDK has an active session
+          if (platform.hasClerkSession()) {
+            jwt = await platform.getClerkSessionToken();
+            final clerkUser = platform.getClerkUser();
+            if (clerkUser != null) {
+              userData = clerkUser;
+            }
+            if (jwt != null) {
+              print('Got JWT from Clerk JS SDK session');
+            }
+          }
+        }
+      }
+
       // Priority 1: If handshake token exists, extract session JWT from it
-      // This is the most reliable method as it contains the actual session cookie
-      if (handshakeToken != null && handshakeToken.isNotEmpty) {
+      // This is a fallback when JS SDK session isn't available
+      if (jwt == null && handshakeToken != null && handshakeToken.isNotEmpty) {
         try {
           final extractedJwt = _extractSessionFromHandshake(handshakeToken);
           if (extractedJwt != null && extractedJwt.startsWith('ey')) {
@@ -601,6 +633,12 @@ class ClerkAuthService {
   /// Sign out
   Future<void> signOut() async {
     try {
+      // On web, sign out from Clerk JS SDK
+      if (kIsWeb) {
+        await platform.clerkSignOut();
+      }
+
+      // Also try to invalidate session via API
       final sessionToken = await getSessionToken();
       if (sessionToken != null) {
         await _clerkApi.delete(
