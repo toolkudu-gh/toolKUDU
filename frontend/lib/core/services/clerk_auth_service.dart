@@ -472,49 +472,33 @@ class ClerkAuthService {
         }
       }
 
-      // REMOVED Priority 5: We should NEVER send non-JWT tokens (like dvb_*) to the backend
-      // Dev tokens are session identifiers, NOT JWTs. The backend will reject them.
-      // If we reach here without a valid JWT, the authentication has failed.
-
-      if (jwt == null || jwt.isEmpty) {
-        print('[OAuthHandler] FAILED: No JWT obtained from any source');
-        print('[OAuthHandler] ========== OAUTH CALLBACK END (FAILED) ==========');
-
-        // Provide a helpful error message based on what went wrong
-        String errorMessage = 'Could not complete authentication. ';
-        if (sessionToken != null && sessionToken.startsWith('dvb_')) {
-          errorMessage += 'The Clerk SDK failed to load properly. Please refresh the page and try again.';
-        } else {
-          errorMessage += 'Please try signing in again.';
-        }
-
-        return {
-          'success': false,
-          'error': errorMessage,
-        };
+      // Priority 5: If we have a dev token but no JWT, send the dev token to the backend
+      // The backend can exchange dev tokens with Clerk's API (no CORS issues on server)
+      String? tokenToUse = jwt;
+      if (tokenToUse == null && sessionToken != null && sessionToken.startsWith('dvb_')) {
+        print('[OAuthHandler] No JWT available, will send dev token to backend for server-side exchange');
+        tokenToUse = sessionToken;
       }
 
-      // Validate that we actually have a JWT (should start with 'ey')
-      if (!jwt.startsWith('ey')) {
-        print('[OAuthHandler] FAILED: Token is not a valid JWT format');
-        final jwtPreviewLen = jwt.length < 10 ? jwt.length : 10;
-        print('[OAuthHandler] Token starts with: ${jwt.substring(0, jwtPreviewLen)}...');
+      if (tokenToUse == null || tokenToUse.isEmpty) {
+        print('[OAuthHandler] FAILED: No token obtained from any source');
         print('[OAuthHandler] ========== OAUTH CALLBACK END (FAILED) ==========');
         return {
           'success': false,
-          'error': 'Invalid authentication token format. Please refresh and try again.',
+          'error': 'Could not complete authentication. Please try signing in again.',
         };
       }
 
-      print('[OAuthHandler] SUCCESS: Got valid JWT (${jwt.length} chars)');
+      print('[OAuthHandler] Using token: ${tokenToUse.substring(0, 10)}... (${tokenToUse.length} chars)');
       print('[OAuthHandler] Saving session...');
       await _saveSession(
-        sessionToken: jwt,
+        sessionToken: tokenToUse,
         userData: userData,
       );
       print('[OAuthHandler] Session saved');
 
       // Sync with backend to get/create user
+      // Backend will handle dev token exchange if needed
       print('[OAuthHandler] Syncing with backend...');
       final syncResult = await _syncUserWithBackend();
 
@@ -774,13 +758,17 @@ class ClerkAuthService {
         return null;
       }
 
-      // Validate token format before sending
-      if (!sessionToken.startsWith('ey')) {
-        print('[BackendSync] Invalid token format - not a JWT');
+      // Validate token format - accept both JWTs (ey*) and dev tokens (dvb_*)
+      // Backend will handle dev token exchange server-side
+      final isJwt = sessionToken.startsWith('ey');
+      final isDevToken = sessionToken.startsWith('dvb_');
+      if (!isJwt && !isDevToken) {
+        print('[BackendSync] Invalid token format - not a JWT or dev token');
         final previewLen = sessionToken.length < 10 ? sessionToken.length : 10;
         print('[BackendSync] Token starts with: ${sessionToken.substring(0, previewLen)}...');
         return null;
       }
+      print('[BackendSync] Token type: ${isJwt ? "JWT" : "dev token"}');
 
       _backendApi.options.headers['Authorization'] = 'Bearer $sessionToken';
 

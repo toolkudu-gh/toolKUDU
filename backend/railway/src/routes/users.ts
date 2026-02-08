@@ -98,6 +98,40 @@ userRoutes.post('/sync', syncLimiter, async (req: Request, res: Response, next: 
             console.error('Session lookup failed:', sessionError);
           }
         }
+
+        // Handle dev tokens (dvb_*) by calling Clerk's Frontend API
+        // The frontend sends this when the JS SDK can't load (CORS/service worker issues)
+        if (!clerkUserId && token.startsWith('dvb_')) {
+          console.log('[Sync] Dev token detected, calling Clerk Frontend API...');
+          try {
+            // Call Clerk's Frontend API to get client info
+            // Dev tokens work as cookies, so we pass them in the Cookie header
+            const clerkDomain = process.env.CLERK_FRONTEND_API || 'https://certain-akita-64.clerk.accounts.dev';
+            const response = await fetch(`${clerkDomain}/v1/client`, {
+              headers: {
+                'Cookie': `__clerk_db_jwt=${token}`,
+              },
+            });
+
+            if (response.ok) {
+              const clientData = await response.json();
+              console.log('[Sync] Clerk client response received');
+
+              // Find active session
+              const sessions = clientData.sessions || clientData.response?.sessions || [];
+              const activeSession = sessions.find((s: any) => s.status === 'active') || sessions[0];
+
+              if (activeSession) {
+                clerkUserId = activeSession.user?.id || activeSession.user_id;
+                console.log('[Sync] Got user ID from dev token:', clerkUserId);
+              }
+            } else {
+              console.error('[Sync] Clerk Frontend API error:', response.status, await response.text());
+            }
+          } catch (devTokenError) {
+            console.error('[Sync] Dev token exchange failed:', devTokenError);
+          }
+        }
       }
     }
 
@@ -107,10 +141,6 @@ userRoutes.post('/sync', syncLimiter, async (req: Request, res: Response, next: 
         error: 'Authentication required',
         message: 'Please sign in to sync your account',
       });
-    }
-
-    if (!clerkUserId) {
-      throw badRequest('No Clerk user ID found');
     }
 
     // Get user info from Clerk
