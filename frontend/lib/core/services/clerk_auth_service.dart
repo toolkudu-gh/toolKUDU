@@ -41,6 +41,27 @@ class ClerkAuthService {
     }
   }
 
+  // Clerk Account Portal URL (for hosted sign-in pages)
+  String get _clerkAccountPortal {
+    // Account Portal uses accounts.dev domain (not clerk.accounts.dev)
+    // Format: https://<instance>.accounts.dev
+    try {
+      final keyPart = AppConfig.clerkPublishableKey
+          .replaceFirst('pk_test_', '')
+          .replaceFirst('pk_live_', '');
+      var decoded = utf8.decode(base64.decode(keyPart));
+      if (decoded.endsWith('\$')) {
+        decoded = decoded.substring(0, decoded.length - 1);
+      }
+      // Convert from clerk.accounts.dev to accounts.dev
+      // certain-akita-64.clerk.accounts.dev -> certain-akita-64.accounts.dev
+      final instance = decoded.split('.').first; // certain-akita-64
+      return 'https://$instance.accounts.dev';
+    } catch (e) {
+      return 'https://certain-akita-64.accounts.dev';
+    }
+  }
+
   /// Web base URL for OAuth redirects
   String get _webBaseUrl {
     return platform.getWebBaseUrl();
@@ -245,14 +266,14 @@ class ClerkAuthService {
     }
   }
 
-  /// Sign in with Google - redirects to Clerk's hosted sign-in page
+  /// Sign in with Google - redirects to Clerk's Account Portal sign-in page
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
       final redirectUrl = Uri.encodeComponent('$_webBaseUrl/auth/callback');
 
-      // Use Clerk's hosted sign-in page with Google OAuth
-      // Format: https://<clerk-domain>/sign-in#/?redirect_url=<url>
-      final clerkSignInUrl = '$_clerkFrontendApi/sign-in'
+      // Use Clerk's Account Portal hosted sign-in page
+      // Format: https://<instance>.accounts.dev/sign-in?redirect_url=<url>
+      final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
           '?redirect_url=$redirectUrl';
 
       // For web: redirect to Clerk hosted sign-in
