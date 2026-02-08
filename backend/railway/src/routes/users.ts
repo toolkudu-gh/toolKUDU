@@ -102,31 +102,59 @@ userRoutes.post('/sync', syncLimiter, async (req: Request, res: Response, next: 
         // Handle dev tokens (dvb_*) by calling Clerk's Frontend API
         // The frontend sends this when the JS SDK can't load (CORS/service worker issues)
         if (!clerkUserId && token.startsWith('dvb_')) {
-          console.log('[Sync] Dev token detected, calling Clerk Frontend API...');
+          console.log('[Sync] Dev token detected:', token.substring(0, 15) + '...');
           try {
             // Call Clerk's Frontend API to get client info
             // Dev tokens work as cookies, so we pass them in the Cookie header
             const clerkDomain = process.env.CLERK_FRONTEND_API || 'https://certain-akita-64.clerk.accounts.dev';
+            console.log('[Sync] Calling Clerk Frontend API:', clerkDomain);
+
             const response = await fetch(`${clerkDomain}/v1/client`, {
+              method: 'GET',
               headers: {
                 'Cookie': `__clerk_db_jwt=${token}`,
+                'Content-Type': 'application/json',
               },
             });
 
-            if (response.ok) {
-              const clientData = await response.json() as { sessions?: any[]; response?: { sessions?: any[] } };
-              console.log('[Sync] Clerk client response received');
+            console.log('[Sync] Clerk API response status:', response.status);
+            const responseText = await response.text();
+            console.log('[Sync] Clerk API response body:', responseText.substring(0, 500));
 
-              // Find active session
-              const sessions = clientData.sessions || clientData.response?.sessions || [];
-              const activeSession = sessions.find((s: any) => s.status === 'active') || sessions[0];
+            if (response.ok && responseText) {
+              const clientData = JSON.parse(responseText) as {
+                sessions?: any[];
+                response?: { sessions?: any[] };
+                client?: { sessions?: any[] };
+              };
 
-              if (activeSession) {
-                clerkUserId = activeSession.user?.id || activeSession.user_id;
-                console.log('[Sync] Got user ID from dev token:', clerkUserId);
+              // Try multiple paths to find sessions
+              const sessions = clientData.sessions
+                || clientData.response?.sessions
+                || clientData.client?.sessions
+                || [];
+
+              console.log('[Sync] Found', sessions.length, 'sessions');
+
+              if (sessions.length > 0) {
+                const activeSession = sessions.find((s: any) => s.status === 'active') || sessions[0];
+                console.log('[Sync] Active session:', JSON.stringify(activeSession).substring(0, 200));
+
+                // Try multiple paths to get user ID
+                clerkUserId = activeSession.user?.id
+                  || activeSession.user_id
+                  || activeSession.userId;
+
+                if (clerkUserId) {
+                  console.log('[Sync] Got user ID from dev token:', clerkUserId);
+                } else {
+                  console.log('[Sync] Could not extract user ID from session');
+                }
+              } else {
+                console.log('[Sync] No sessions found in response');
               }
             } else {
-              console.error('[Sync] Clerk Frontend API error:', response.status, await response.text());
+              console.error('[Sync] Clerk Frontend API error:', response.status);
             }
           } catch (devTokenError) {
             console.error('[Sync] Dev token exchange failed:', devTokenError);
