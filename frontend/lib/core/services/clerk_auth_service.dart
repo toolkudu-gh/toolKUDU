@@ -339,17 +339,54 @@ class ClerkAuthService {
         print('Using session token as JWT directly');
       }
 
-      // Priority 3: If session token is a dev token (dvb_...), try to get JWT via Clerk API
+      // Priority 3: If session token is a dev token (dvb_...), use Clerk's client API
+      // The dvb_ token is a development JWT that must be sent as a cookie
       if (jwt == null && sessionToken != null && sessionToken.startsWith('dvb_')) {
-        print('Dev token detected, attempting to get JWT from Clerk API');
+        print('Dev token detected: $sessionToken');
         try {
-          // The dvb_ token can be used as a session identifier
-          final tokenResponse = await _clerkApi.post(
-            '$_clerkFrontendApi/v1/client/sessions/$sessionToken/tokens',
+          // Get client info with the dev token as cookie
+          final clientResponse = await _clerkApi.get(
+            '$_clerkFrontendApi/v1/client',
+            options: Options(
+              headers: {
+                'Cookie': '__clerk_db_jwt=$sessionToken',
+              },
+            ),
           );
-          if (tokenResponse.statusCode == 200) {
-            jwt = tokenResponse.data['jwt'] as String?;
-            print('Got JWT from dev token API');
+
+          if (clientResponse.statusCode == 200) {
+            final clientData = clientResponse.data as Map<String, dynamic>;
+            print('Client response: ${clientData.keys}');
+
+            // Get the active session
+            final sessions = clientData['sessions'] as List?;
+            if (sessions != null && sessions.isNotEmpty) {
+              final activeSession = sessions.firstWhere(
+                (s) => s['status'] == 'active',
+                orElse: () => sessions.first,
+              );
+
+              final sessionId = activeSession['id'] as String?;
+              print('Found active session: $sessionId');
+
+              if (sessionId != null) {
+                // Get JWT token from this session
+                final tokenResponse = await _clerkApi.post(
+                  '$_clerkFrontendApi/v1/client/sessions/$sessionId/tokens',
+                  options: Options(
+                    headers: {
+                      'Cookie': '__clerk_db_jwt=$sessionToken',
+                    },
+                  ),
+                );
+
+                if (tokenResponse.statusCode == 200) {
+                  jwt = tokenResponse.data['jwt'] as String?;
+                  userData = activeSession['user'] as Map<String, dynamic>? ?? {};
+                  print('Got JWT from dev token session');
+                }
+              }
+            }
           }
         } catch (e) {
           print('Failed to get JWT from dev token: $e');
