@@ -41,8 +41,14 @@ class _OAuthCallbackScreenState extends ConsumerState<OAuthCallbackScreen> {
   }
 
   Future<void> _handleCallback() async {
+    print('[OAuthCallback] Starting callback processing...');
+    print('[OAuthCallback] sessionToken: ${widget.sessionToken?.substring(0, 10) ?? 'null'}...');
+    print('[OAuthCallback] handshakeToken: ${widget.handshakeToken != null ? 'present (${widget.handshakeToken!.length} chars)' : 'null'}');
+    print('[OAuthCallback] error: ${widget.error}');
+
     // Check for error from OAuth provider
     if (widget.error != null && widget.error!.isNotEmpty) {
+      print('[OAuthCallback] Error from OAuth provider: ${widget.error}');
       setState(() {
         _isProcessing = false;
         _errorMessage = 'Authentication failed: ${widget.error}';
@@ -51,12 +57,14 @@ class _OAuthCallbackScreenState extends ConsumerState<OAuthCallbackScreen> {
     }
 
     // Process the OAuth callback
+    print('[OAuthCallback] Calling handleOAuthCallback...');
     final success = await ref.read(authStateProvider.notifier).handleOAuthCallback(
       sessionToken: widget.sessionToken,
       sessionId: widget.sessionId,
       handshakeToken: widget.handshakeToken,
       code: widget.code,
     );
+    print('[OAuthCallback] handleOAuthCallback returned: $success');
 
     if (!mounted) return;
 

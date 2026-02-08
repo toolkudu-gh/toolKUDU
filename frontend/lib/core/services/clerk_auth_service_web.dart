@@ -56,7 +56,7 @@ Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 10)}) asyn
 }
 
 /// Sign in with Google using Clerk JS SDK
-/// Creates a sign-in attempt with OAuth strategy and redirects to Google
+/// Uses authenticateWithRedirect directly for OAuth flow
 Future<void> clerkSignInWithGoogle(String redirectUrl) async {
   if (clerk == null) {
     throw Exception('Clerk JS SDK not loaded');
@@ -69,44 +69,17 @@ Future<void> clerkSignInWithGoogle(String redirectUrl) async {
   print('[Clerk] Starting Google OAuth sign-in...');
   print('[Clerk] Redirect URL: $redirectUrl');
 
-  // Create sign-in params
-  final createParams = <String, dynamic>{
-    'strategy': 'oauth_google',
-    'redirectUrl': redirectUrl,
-    'actionCompleteRedirectUrl': redirectUrl,
-  }.jsify() as JSObject;
-
-  // Create the sign-in attempt
-  final signInAttempt = await clerk!.client!.signIn.create(createParams).toDart;
-
-  print('[Clerk] Sign-in attempt created');
-  print('[Clerk] Status: ${signInAttempt.status}');
-
-  // Check if we have an external verification redirect URL (for OAuth)
-  final verification = signInAttempt.firstFactorVerification;
-  if (verification != null) {
-    print('[Clerk] Verification status: ${verification.status}');
-    print('[Clerk] Verification strategy: ${verification.strategy}');
-
-    final externalUrl = verification.externalVerificationRedirectURL;
-    if (externalUrl != null && externalUrl.isNotEmpty) {
-      print('[Clerk] Redirecting to OAuth provider: ${externalUrl.substring(0, 50)}...');
-      // Redirect to Google OAuth
-      html.window.location.href = externalUrl;
-      return;
-    }
-  }
-
-  // If no external URL, try authenticateWithRedirect on the attempt
-  print('[Clerk] No external URL found, trying authenticateWithRedirect...');
-
-  final redirectParams = <String, dynamic>{
+  // Use authenticateWithRedirect directly on client.signIn
+  // This is the recommended one-step OAuth approach
+  final params = <String, dynamic>{
     'strategy': 'oauth_google',
     'redirectUrl': redirectUrl,
     'redirectUrlComplete': redirectUrl,
   }.jsify() as JSObject;
 
-  await signInAttempt.authenticateWithRedirect(redirectParams).toDart;
+  print('[Clerk] Calling authenticateWithRedirect...');
+  await clerk!.client!.signIn.authenticateWithRedirect(params).toDart;
+  print('[Clerk] authenticateWithRedirect returned (should have redirected)');
 }
 
 /// Get current session JWT token from Clerk JS SDK

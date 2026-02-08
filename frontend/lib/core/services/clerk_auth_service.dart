@@ -334,24 +334,31 @@ class ClerkAuthService {
       String? jwt;
       Map<String, dynamic> userData = {};
 
-      print('OAuth callback received - sessionToken: ${sessionToken?.substring(0, 10) ?? 'null'}..., '
-          'handshake: ${handshakeToken != null ? 'present' : 'null'}, '
-          'sessionId: $sessionId');
+      print('[OAuthHandler] ========== OAUTH CALLBACK START ==========');
+      print('[OAuthHandler] sessionToken: ${sessionToken != null ? "${sessionToken.substring(0, 10)}... (${sessionToken.length} chars)" : "null"}');
+      print('[OAuthHandler] handshakeToken: ${handshakeToken != null ? "present (${handshakeToken.length} chars)" : "null"}');
+      print('[OAuthHandler] sessionId: $sessionId');
+      print('[OAuthHandler] code: ${code != null ? "present" : "null"}');
 
       // Priority 0: On web, try to get session from Clerk JS SDK first
       // This is the most reliable method when using the JS SDK
       if (kIsWeb) {
+        print('[OAuthHandler] Web platform - checking Clerk JS SDK...');
         final loaded = await platform.waitForClerk();
+        print('[OAuthHandler] Clerk SDK loaded: $loaded');
+
         if (loaded) {
-          // Check if Clerk JS SDK has an active session
-          if (platform.hasClerkSession()) {
+          final hasSession = platform.hasClerkSession();
+          print('[OAuthHandler] Clerk SDK hasSession: $hasSession');
+
+          if (hasSession) {
             jwt = await platform.getClerkSessionToken();
+            print('[OAuthHandler] Got JWT from SDK: ${jwt != null ? "yes (${jwt.length} chars)" : "no"}');
+
             final clerkUser = platform.getClerkUser();
             if (clerkUser != null) {
               userData = clerkUser;
-            }
-            if (jwt != null) {
-              print('Got JWT from Clerk JS SDK session');
+              print('[OAuthHandler] Got user from SDK: ${clerkUser['email']}');
             }
           }
         }
@@ -360,14 +367,18 @@ class ClerkAuthService {
       // Priority 1: If handshake token exists, extract session JWT from it
       // This is a fallback when JS SDK session isn't available
       if (jwt == null && handshakeToken != null && handshakeToken.isNotEmpty) {
+        print('[OAuthHandler] Trying to extract JWT from handshake token...');
         try {
           final extractedJwt = _extractSessionFromHandshake(handshakeToken);
+          print('[OAuthHandler] Extracted JWT: ${extractedJwt != null ? "yes (${extractedJwt.length} chars, starts with ${extractedJwt.substring(0, 10)})" : "null"}');
           if (extractedJwt != null && extractedJwt.startsWith('ey')) {
             jwt = extractedJwt;
-            print('Using JWT extracted from handshake');
+            print('[OAuthHandler] Using JWT extracted from handshake');
+          } else {
+            print('[OAuthHandler] Extracted value does not look like a JWT');
           }
         } catch (e) {
-          print('Failed to decode handshake token: $e');
+          print('[OAuthHandler] Failed to decode handshake token: $e');
         }
       }
 
@@ -461,27 +472,33 @@ class ClerkAuthService {
 
       // Priority 5: Last resort - use session token as-is
       if (jwt == null && sessionToken != null && sessionToken.isNotEmpty) {
-        print('Using session token as-is (last resort): ${sessionToken.substring(0, 10)}...');
+        print('[OAuthHandler] Priority 5: Using session token as-is (last resort)');
         jwt = sessionToken;
       }
 
       if (jwt == null || jwt.isEmpty) {
-        print('OAuth callback failed: No JWT obtained');
+        print('[OAuthHandler] FAILED: No JWT obtained from any source');
+        print('[OAuthHandler] ========== OAUTH CALLBACK END (FAILED) ==========');
         return {
           'success': false,
           'error': 'Could not obtain authentication token from Clerk',
         };
       }
 
-      print('OAuth callback success - saving session with JWT');
+      print('[OAuthHandler] SUCCESS: Got JWT (${jwt.length} chars)');
+      print('[OAuthHandler] Saving session...');
       await _saveSession(
         sessionToken: jwt,
         userData: userData,
       );
+      print('[OAuthHandler] Session saved');
 
       // Sync with backend to get/create user
+      print('[OAuthHandler] Syncing with backend...');
       final syncResult = await _syncUserWithBackend();
+      print('[OAuthHandler] Backend sync result: ${syncResult != null ? "success" : "failed/null"}');
 
+      print('[OAuthHandler] ========== OAUTH CALLBACK END (SUCCESS) ==========');
       return {
         'success': true,
         'accessToken': jwt,
@@ -489,10 +506,12 @@ class ClerkAuthService {
         'isNewUser': syncResult?['isNewUser'] ?? false,
       };
     } on DioException catch (e) {
-      print('OAuth callback DioException: ${e.message}');
+      print('[OAuthHandler] DioException: ${e.message}');
+      print('[OAuthHandler] ========== OAUTH CALLBACK END (EXCEPTION) ==========');
       return _handleDioError(e, 'OAuth callback failed');
     } catch (e) {
-      print('OAuth callback error: $e');
+      print('[OAuthHandler] Error: $e');
+      print('[OAuthHandler] ========== OAUTH CALLBACK END (ERROR) ==========');
       return {'success': false, 'error': 'OAuth callback failed: $e'};
     }
   }
