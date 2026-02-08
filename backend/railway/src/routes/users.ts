@@ -114,7 +114,7 @@ userRoutes.post('/sync', syncLimiter, async (req: Request, res: Response, next: 
             });
 
             if (response.ok) {
-              const clientData = await response.json();
+              const clientData = await response.json() as { sessions?: any[]; response?: { sessions?: any[] } };
               console.log('[Sync] Clerk client response received');
 
               // Find active session
