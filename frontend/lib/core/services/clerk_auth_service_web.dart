@@ -102,12 +102,40 @@ Future<String?> getClerkSessionToken() async {
   }
 
   try {
-    final token = await clerk!.session!.getToken().toDart;
-    final jwt = token.jwt;
-    if (jwt != null && jwt.isNotEmpty) {
+    final result = await clerk!.session!.getToken().toDart;
+    if (result == null) {
+      print('[Clerk] getToken() returned null');
+      return null;
+    }
+
+    // Clerk JS SDK v5 returns the JWT string directly from getToken()
+    // Try as JSString first (most common in v5)
+    String? jwt;
+    if (result.isA<JSString>()) {
+      jwt = (result as JSString).toDart;
+      print('[Clerk] getToken() returned string directly');
+    } else {
+      // Some versions return an object - try dartify and extract
+      final dartified = result.dartify();
+      if (dartified is String) {
+        jwt = dartified;
+        print('[Clerk] getToken() returned dartified string');
+      } else if (dartified is Map) {
+        jwt = dartified['jwt']?.toString();
+        print('[Clerk] getToken() returned object with jwt property');
+      } else {
+        print('[Clerk] getToken() returned unexpected type: ${dartified.runtimeType}');
+        // Last resort: stringify
+        jwt = dartified?.toString();
+      }
+    }
+
+    if (jwt != null && jwt.isNotEmpty && jwt.startsWith('ey')) {
       print('[Clerk] Got JWT from session (length: ${jwt.length})');
       return jwt;
     }
+    final preview = jwt != null && jwt.length > 20 ? jwt.substring(0, 20) : jwt;
+    print('[Clerk] getToken() returned non-JWT value: $preview');
     return null;
   } catch (e) {
     print('[Clerk] Error getting session token: $e');

@@ -97,13 +97,8 @@ extension type ClerkSession._(JSObject _) implements JSObject {
   external String get status;
 
   /// Get a fresh JWT token for this session
-  external JSPromise<ClerkToken> getToken();
-}
-
-/// JWT token from getToken()
-extension type ClerkToken._(JSObject _) implements JSObject {
-  /// The JWT string
-  external String? get jwt;
+  /// Returns Promise<string | null> in Clerk JS SDK v5
+  external JSPromise<JSAny?> getToken();
 }
 
 /// Clerk user object
