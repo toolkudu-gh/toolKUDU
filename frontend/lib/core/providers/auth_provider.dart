@@ -25,6 +25,7 @@ class AuthState {
   final String? error;
   final bool requiresEmailVerification;
   final String? pendingVerificationEmail;
+  final bool isOAuthRedirecting;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -34,6 +35,7 @@ class AuthState {
     this.error,
     this.requiresEmailVerification = false,
     this.pendingVerificationEmail,
+    this.isOAuthRedirecting = false,
   });
 
   AuthState copyWith({
@@ -44,6 +46,7 @@ class AuthState {
     String? error,
     bool? requiresEmailVerification,
     String? pendingVerificationEmail,
+    bool? isOAuthRedirecting,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -53,6 +56,7 @@ class AuthState {
       error: error,
       requiresEmailVerification: requiresEmailVerification ?? this.requiresEmailVerification,
       pendingVerificationEmail: pendingVerificationEmail ?? this.pendingVerificationEmail,
+      isOAuthRedirecting: isOAuthRedirecting ?? this.isOAuthRedirecting,
     );
   }
 }
@@ -218,6 +222,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // If redirecting to Google OAuth, keep loading state - don't set authenticated
       if (result['redirecting'] == true) {
         // Browser will redirect, keep showing loading on login screen
+        state = state.copyWith(isOAuthRedirecting: true);
         return false;
       }
 

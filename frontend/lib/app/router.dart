@@ -34,8 +34,9 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 class AuthChangeNotifier extends ChangeNotifier {
   AuthChangeNotifier(this._ref) {
     _ref.listen(authStateProvider, (previous, next) {
-      // Only notify when authentication status changes, not on every state change
-      if (previous?.isAuthenticated != next.isAuthenticated) {
+      // Notify when authentication status or OAuth redirect state changes
+      if (previous?.isAuthenticated != next.isAuthenticated ||
+          previous?.isOAuthRedirecting != next.isOAuthRedirecting) {
         notifyListeners();
       }
     });
@@ -43,6 +44,7 @@ class AuthChangeNotifier extends ChangeNotifier {
   final Ref _ref;
 
   bool get isAuthenticated => _ref.read(authStateProvider).isAuthenticated;
+  bool get isOAuthRedirecting => _ref.read(authStateProvider).isOAuthRedirecting;
 }
 
 final authChangeNotifierProvider = Provider<AuthChangeNotifier>((ref) {
@@ -72,7 +74,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // If logged in and on auth routes, redirect to home
-      if (isLoggedIn && isAuthRoute) {
+      // But NOT if we're in the middle of an OAuth redirect to Google
+      if (isLoggedIn && isAuthRoute && !authNotifier.isOAuthRedirecting) {
         return '/home';
       }
 

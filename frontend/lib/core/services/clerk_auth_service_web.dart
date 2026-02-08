@@ -89,9 +89,13 @@ Future<void> clerkSignInWithGoogle(String redirectUrl) async {
     'prompt': 'select_account',
   }.jsify() as JSObject;
 
-  print('[Clerk] Calling authenticateWithRedirect...');
-  await clerk!.client!.signIn.authenticateWithRedirect(params).toDart;
-  print('[Clerk] authenticateWithRedirect returned (should have redirected)');
+  print('[Clerk] Calling authenticateWithRedirect (fire-and-forget)...');
+  // Fire-and-forget: don't await. The SDK will redirect the browser.
+  // Awaiting can cause GoRouter to react to the URL change before we
+  // return control to the auth provider.
+  clerk!.client!.signIn.authenticateWithRedirect(params).toDart.catchError((e) {
+    print('[Clerk] authenticateWithRedirect error: $e');
+  });
 }
 
 /// Get current session JWT token from Clerk JS SDK
