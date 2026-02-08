@@ -37,7 +37,13 @@ class _OAuthCallbackScreenState extends ConsumerState<OAuthCallbackScreen> {
   @override
   void initState() {
     super.initState();
-    _handleCallback();
+    // Defer callback processing to after the first frame to avoid
+    // modifying Riverpod state during the build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _handleCallback();
+      }
+    });
   }
 
   Future<void> _handleCallback() async {
