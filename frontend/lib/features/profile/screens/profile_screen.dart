@@ -216,7 +216,7 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.people_outline,
                     title: 'Buddies',
-                    onTap: () => context.go('/profile/buddies'),
+                    onTap: () => context.go('/buddies'),
                   ),
                   _MenuItem(
                     icon: Icons.inventory_2_outlined,

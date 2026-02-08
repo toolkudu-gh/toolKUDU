@@ -75,6 +75,7 @@ Future<void> clerkSignInWithGoogle(String redirectUrl) async {
     'strategy': 'oauth_google',
     'redirectUrl': redirectUrl,
     'redirectUrlComplete': redirectUrl,
+    'prompt': 'select_account',
   }.jsify() as JSObject;
 
   print('[Clerk] Calling authenticateWithRedirect...');
