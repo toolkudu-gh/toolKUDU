@@ -249,11 +249,10 @@ class ClerkAuthService {
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
       // Build Clerk OAuth URL for Google
+      // Clerk uses /oauth/google endpoint with redirect_url parameter
       final redirectUrl = Uri.encodeComponent('$_webBaseUrl/auth/callback');
-      final clerkOAuthUrl = '$_clerkFrontendApi/v1/oauth_authorize?'
-          'strategy=oauth_google&'
-          'redirect_url=$redirectUrl&'
-          'redirect_url_complete=$redirectUrl';
+      final clerkOAuthUrl = '$_clerkFrontendApi/oauth/google?'
+          'redirect_url=$redirectUrl';
 
       // For web: redirect to Clerk OAuth
       if (kIsWeb) {

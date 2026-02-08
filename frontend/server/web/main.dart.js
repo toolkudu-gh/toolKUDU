@@ -107238,7 +107238,7 @@ i=l.gef()
 h=l.gli(l)
 g=j?":"+k:""
 o=A.nW(2,i+"://"+h+g+"/auth/callback",B.af,!1)
-n=p.gmU()+"/v1/oauth_authorize?strategy=oauth_google&redirect_url="+A.i(o)+"&redirect_url_complete="+A.i(o)
+n=p.gmU()+"/oauth/google?redirect_url="+A.i(o)
 window.location.href=n
 g=A.a7(["success",!0,"redirecting",!0],t.N,t.z)
 q=g
