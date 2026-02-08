@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { clerkMiddleware } from '@clerk/express';
 import { db } from './db';
 import { errorHandler } from './middleware/errorHandler';
+import { generalLimiter } from './middleware/rateLimit';
 import { healthRoutes } from './routes/health';
 import { toolboxRoutes } from './routes/toolboxes';
 import { toolRoutes } from './routes/tools';
@@ -16,6 +17,9 @@ import { setupRoutes } from './routes/setup';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust proxy for Railway's reverse proxy (fixes X-Forwarded-For for rate limiting)
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
@@ -36,6 +40,9 @@ app.use(cors({
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting (applied to all routes)
+app.use(generalLimiter);
 
 // Clerk authentication middleware (attaches auth to request)
 app.use(clerkMiddleware());

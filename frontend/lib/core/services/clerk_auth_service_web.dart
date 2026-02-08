@@ -18,20 +18,30 @@ void redirectTo(String url) {
   html.window.location.href = url;
 }
 
+/// Check if Clerk SDK failed to load from CDN
+@JS('window.clerkLoadError')
+external bool? get clerkLoadError;
+
 /// Wait for Clerk JS SDK to load and initialize
-Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 15)}) async {
+Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 20)}) async {
   final stopwatch = Stopwatch()..start();
 
   while (stopwatch.elapsed < timeout) {
+    // Check if SDK failed to load from CDN (set by onerror handler in index.html)
+    if (clerkLoadError == true) {
+      print('[Clerk] SDK failed to load from CDN - check network/CSP');
+      return false;
+    }
+
     // Check if Clerk global is available
     if (clerk != null) {
       try {
         // Load/initialize Clerk
         await clerk!.load().toDart;
-        print('[Clerk] SDK loaded successfully');
+        print('[Clerk] SDK loaded and initialized successfully');
         return true;
       } catch (e) {
-        print('[Clerk] Error loading SDK: $e');
+        print('[Clerk] Error initializing SDK: $e');
         return false;
       }
     }
@@ -52,6 +62,7 @@ Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 15)}) asyn
   }
 
   print('[Clerk] SDK load timeout after ${timeout.inSeconds}s');
+  print('[Clerk] clerkLoaded=$clerkLoaded, clerkLoadError=$clerkLoadError, clerk=${clerk != null}');
   return false;
 }
 
