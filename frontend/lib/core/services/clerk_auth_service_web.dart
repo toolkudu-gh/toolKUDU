@@ -28,10 +28,10 @@ Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 10)}) asyn
       try {
         // Load/initialize Clerk
         await clerk!.load().toDart;
-        print('Clerk JS SDK loaded successfully');
+        print('[Clerk] SDK loaded successfully');
         return true;
       } catch (e) {
-        print('Error loading Clerk: $e');
+        print('[Clerk] Error loading SDK: $e');
         return false;
       }
     }
@@ -40,10 +40,10 @@ Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 10)}) asyn
     if (clerkLoaded == true && clerk != null) {
       try {
         await clerk!.load().toDart;
-        print('Clerk JS SDK loaded via clerkLoaded flag');
+        print('[Clerk] SDK loaded via clerkLoaded flag');
         return true;
       } catch (e) {
-        print('Error loading Clerk after clerkLoaded: $e');
+        print('[Clerk] Error loading after clerkLoaded: $e');
         return false;
       }
     }
@@ -51,29 +51,68 @@ Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 10)}) asyn
     await Future.delayed(const Duration(milliseconds: 100));
   }
 
-  print('Clerk JS SDK load timeout after ${timeout.inSeconds}s');
+  print('[Clerk] SDK load timeout after ${timeout.inSeconds}s');
   return false;
 }
 
-/// Sign in with Google using Clerk JS SDK OAuth redirect
+/// Sign in with Google using Clerk JS SDK
+/// Creates a sign-in attempt with OAuth strategy and redirects to Google
 Future<void> clerkSignInWithGoogle(String redirectUrl) async {
   if (clerk == null) {
     throw Exception('Clerk JS SDK not loaded');
   }
 
-  final params = <String, dynamic>{
+  if (clerk!.client == null) {
+    throw Exception('Clerk client not available');
+  }
+
+  print('[Clerk] Starting Google OAuth sign-in...');
+  print('[Clerk] Redirect URL: $redirectUrl');
+
+  // Create sign-in params
+  final createParams = <String, dynamic>{
+    'strategy': 'oauth_google',
+    'redirectUrl': redirectUrl,
+    'actionCompleteRedirectUrl': redirectUrl,
+  }.jsify() as JSObject;
+
+  // Create the sign-in attempt
+  final signInAttempt = await clerk!.client!.signIn.create(createParams).toDart;
+
+  print('[Clerk] Sign-in attempt created');
+  print('[Clerk] Status: ${signInAttempt.status}');
+
+  // Check if we have an external verification redirect URL (for OAuth)
+  final verification = signInAttempt.firstFactorVerification;
+  if (verification != null) {
+    print('[Clerk] Verification status: ${verification.status}');
+    print('[Clerk] Verification strategy: ${verification.strategy}');
+
+    final externalUrl = verification.externalVerificationRedirectURL;
+    if (externalUrl != null && externalUrl.isNotEmpty) {
+      print('[Clerk] Redirecting to OAuth provider: ${externalUrl.substring(0, 50)}...');
+      // Redirect to Google OAuth
+      html.window.location.href = externalUrl;
+      return;
+    }
+  }
+
+  // If no external URL, try authenticateWithRedirect on the attempt
+  print('[Clerk] No external URL found, trying authenticateWithRedirect...');
+
+  final redirectParams = <String, dynamic>{
     'strategy': 'oauth_google',
     'redirectUrl': redirectUrl,
     'redirectUrlComplete': redirectUrl,
-  }.jsify();
+  }.jsify() as JSObject;
 
-  await clerk!.client!.signIn.authenticateWithRedirect(params as JSObject).toDart;
+  await signInAttempt.authenticateWithRedirect(redirectParams).toDart;
 }
 
 /// Get current session JWT token from Clerk JS SDK
 Future<String?> getClerkSessionToken() async {
   if (clerk?.session == null) {
-    print('No active Clerk session');
+    print('[Clerk] No active session');
     return null;
   }
 
@@ -81,12 +120,12 @@ Future<String?> getClerkSessionToken() async {
     final token = await clerk!.session!.getToken().toDart;
     final jwt = token.jwt;
     if (jwt != null && jwt.isNotEmpty) {
-      print('Got JWT from Clerk session (length: ${jwt.length})');
+      print('[Clerk] Got JWT from session (length: ${jwt.length})');
       return jwt;
     }
     return null;
   } catch (e) {
-    print('Error getting Clerk session token: $e');
+    print('[Clerk] Error getting session token: $e');
     return null;
   }
 }
@@ -124,14 +163,16 @@ Map<String, dynamic>? getClerkUser() {
       'username': user.username,
     };
   } catch (e) {
-    print('Error getting Clerk user: $e');
+    print('[Clerk] Error getting user: $e');
     return null;
   }
 }
 
 /// Check if there is an active Clerk session
 bool hasClerkSession() {
-  return clerk?.session != null;
+  final hasSession = clerk?.session != null;
+  print('[Clerk] hasClerkSession: $hasSession');
+  return hasSession;
 }
 
 /// Sign out using Clerk JS SDK
@@ -139,9 +180,9 @@ Future<void> clerkSignOut() async {
   if (clerk != null) {
     try {
       await clerk!.signOut().toDart;
-      print('Clerk sign out successful');
+      print('[Clerk] Sign out successful');
     } catch (e) {
-      print('Error signing out from Clerk: $e');
+      print('[Clerk] Error signing out: $e');
     }
   }
 }

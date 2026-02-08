@@ -45,8 +45,8 @@ extension type ClerkClient._(JSObject _) implements JSObject {
 
 /// Sign-in resource
 extension type ClerkSignIn._(JSObject _) implements JSObject {
-  /// Create a new sign-in attempt
-  external JSPromise<JSAny?> create(JSObject params);
+  /// Create a new sign-in attempt - returns SignInAttempt
+  external JSPromise<SignInAttempt> create(JSObject params);
 
   /// Authenticate with OAuth redirect
   external JSPromise<JSAny?> authenticateWithRedirect(JSObject params);
@@ -59,6 +59,33 @@ extension type ClerkSignUp._(JSObject _) implements JSObject {
 
   /// Authenticate with OAuth redirect
   external JSPromise<JSAny?> authenticateWithRedirect(JSObject params);
+}
+
+/// Sign-in attempt returned from signIn.create()
+extension type SignInAttempt._(JSObject _) implements JSObject {
+  /// Sign-in attempt ID
+  external String? get id;
+
+  /// Status of the sign-in attempt
+  external String? get status;
+
+  /// First factor verification info (contains OAuth redirect URL)
+  external FactorVerification? get firstFactorVerification;
+
+  /// Authenticate with redirect (call on this attempt for OAuth)
+  external JSPromise<JSAny?> authenticateWithRedirect(JSObject params);
+}
+
+/// Factor verification info
+extension type FactorVerification._(JSObject _) implements JSObject {
+  /// Status of verification
+  external String? get status;
+
+  /// Strategy used
+  external String? get strategy;
+
+  /// External verification redirect URL (for OAuth - this is the Google auth URL)
+  external String? get externalVerificationRedirectURL;
 }
 
 /// Active session

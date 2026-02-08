@@ -276,24 +276,29 @@ class ClerkAuthService {
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
       final redirectUrl = '$_webBaseUrl/auth/callback';
+      print('[Auth] signInWithGoogle called, redirect URL: $redirectUrl');
 
       // For web: Use Clerk JS SDK for proper OAuth flow
       if (kIsWeb) {
+        print('[Auth] Web platform detected, attempting Clerk JS SDK...');
         final loaded = await platform.waitForClerk();
+        print('[Auth] Clerk SDK loaded: $loaded');
+
         if (loaded) {
-          try {
-            await platform.clerkSignInWithGoogle(redirectUrl);
-            return {'success': true, 'redirecting': true};
-          } catch (e) {
-            print('Clerk JS SDK OAuth failed: $e, falling back to Account Portal');
-            // Fall through to Account Portal redirect
-          }
+          // Use Clerk JS SDK - this will redirect to Google OAuth
+          // Don't catch errors here - let them propagate so we don't silently fall back
+          await platform.clerkSignInWithGoogle(redirectUrl);
+          // If we get here without redirect, something is wrong
+          return {'success': true, 'redirecting': true};
+        } else {
+          print('[Auth] Clerk SDK not loaded, falling back to Account Portal');
         }
 
         // Fallback: Use Clerk's Account Portal hosted sign-in page
         final encodedRedirect = Uri.encodeComponent(redirectUrl);
         final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
             '?redirect_url=$encodedRedirect';
+        print('[Auth] Redirecting to Account Portal: $clerkSignInUrl');
         platform.redirectTo(clerkSignInUrl);
         return {'success': true, 'redirecting': true};
       }
@@ -313,6 +318,7 @@ class ClerkAuthService {
         'error': 'Could not open browser for sign-in',
       };
     } catch (e) {
+      print('[Auth] Google sign-in error: $e');
       return {'success': false, 'error': 'Google sign-in failed: $e'};
     }
   }
