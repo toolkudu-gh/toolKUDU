@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/api_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -204,19 +205,46 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Call API to update profile
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final api = ref.read(apiServiceProvider);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isUsernameChanged
-              ? 'Profile updated with new username'
-              : 'Profile updated'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
-      context.go('/profile');
+      final updateData = <String, dynamic>{};
+
+      if (_displayNameController.text.trim() != user?.displayName) {
+        updateData['displayName'] = _displayNameController.text.trim();
+      }
+      if (_bioController.text.trim() != user?.bio) {
+        updateData['bio'] = _bioController.text.trim();
+      }
+      if (isUsernameChanged) {
+        updateData['username'] = newUsername;
+      }
+
+      if (updateData.isNotEmpty) {
+        await api.put('/api/users/me', data: updateData);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isUsernameChanged
+                ? 'Profile updated with new username'
+                : 'Profile updated'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        context.go('/profile');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 

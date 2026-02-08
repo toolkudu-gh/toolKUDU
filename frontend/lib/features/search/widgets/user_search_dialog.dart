@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/user.dart';
+import '../../../core/services/api_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -42,23 +43,26 @@ class _UserSearchDialogState extends ConsumerState<UserSearchDialog> {
 
     setState(() => _isSearching = true);
 
-    // TODO: Replace with actual API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final api = ref.read(apiServiceProvider);
+      final response = await api.get('/api/users/search', queryParameters: {'q': query});
 
-    setState(() {
-      _hasSearched = true;
-      _isSearching = false;
-      _searchResults = [
-        const User(id: 'u1', username: 'john_doe', displayName: 'John Doe', followersCount: 45),
-        const User(id: 'u2', username: 'jane_smith', displayName: 'Jane Smith', followersCount: 128),
-        const User(id: 'u3', username: 'bob_builder', displayName: 'Bob Builder', followersCount: 89),
-        const User(id: 'u4', username: 'mike_tools', displayName: 'Mike Johnson', followersCount: 56),
-        const User(id: 'u5', username: 'sarah_maker', displayName: 'Sarah Maker', followersCount: 234),
-      ].where((u) =>
-          u.username.toLowerCase().contains(query.toLowerCase()) ||
-          (u.displayName?.toLowerCase().contains(query.toLowerCase()) ?? false)
-      ).toList();
-    });
+      final items = response['items'] as List? ?? [];
+      final users = items.map((e) => User.fromJson(e as Map<String, dynamic>)).toList();
+
+      setState(() {
+        _hasSearched = true;
+        _isSearching = false;
+        _searchResults = users;
+      });
+    } catch (e) {
+      print('User search failed: $e');
+      setState(() {
+        _hasSearched = true;
+        _isSearching = false;
+        _searchResults = [];
+      });
+    }
   }
 
   @override

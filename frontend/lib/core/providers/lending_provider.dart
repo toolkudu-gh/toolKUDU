@@ -52,24 +52,26 @@ class LendingNotifier extends StateNotifier<LendingState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // TODO: Replace with actual API call when backend is connected
-      // For now, simulate empty list
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _apiService.get(
+        '/api/sharing/requests/incoming',
+        queryParameters: status != null ? {'status': status} : null,
+      );
 
-      // final response = await _apiService.get(
-      //   '/sharing/requests/incoming',
-      //   queryParameters: status != null ? {'status': status} : null,
-      // );
-      // final requests = (response['data'] as List)
-      //     .map((e) => LendingRequest.fromJson(e))
-      //     .toList();
+      final items = response['items'] as List? ?? [];
+      final requests = items
+          .map((e) => LendingRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
 
+      state = state.copyWith(
+        incomingRequests: requests,
+        isLoading: false,
+      );
+    } catch (e) {
+      print('Failed to load incoming requests: $e');
       state = state.copyWith(
         incomingRequests: [],
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -77,23 +79,26 @@ class LendingNotifier extends StateNotifier<LendingState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // TODO: Replace with actual API call when backend is connected
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _apiService.get(
+        '/api/sharing/requests/outgoing',
+        queryParameters: status != null ? {'status': status} : null,
+      );
 
-      // final response = await _apiService.get(
-      //   '/sharing/requests/outgoing',
-      //   queryParameters: status != null ? {'status': status} : null,
-      // );
-      // final requests = (response['data'] as List)
-      //     .map((e) => LendingRequest.fromJson(e))
-      //     .toList();
+      final items = response['items'] as List? ?? [];
+      final requests = items
+          .map((e) => LendingRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
 
+      state = state.copyWith(
+        outgoingRequests: requests,
+        isLoading: false,
+      );
+    } catch (e) {
+      print('Failed to load outgoing requests: $e');
       state = state.copyWith(
         outgoingRequests: [],
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -101,15 +106,23 @@ class LendingNotifier extends StateNotifier<LendingState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _apiService.get('/api/sharing/lent-out');
 
+      final items = response['items'] as List? ?? [];
+      final tools = items
+          .map((e) => LentOutTool.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      state = state.copyWith(
+        lentOutTools: tools,
+        isLoading: false,
+      );
+    } catch (e) {
+      print('Failed to load lent out tools: $e');
       state = state.copyWith(
         lentOutTools: [],
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -117,15 +130,23 @@ class LendingNotifier extends StateNotifier<LendingState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _apiService.get('/api/sharing/borrowed');
 
+      final items = response['items'] as List? ?? [];
+      final tools = items
+          .map((e) => BorrowedTool.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      state = state.copyWith(
+        borrowedTools: tools,
+        isLoading: false,
+      );
+    } catch (e) {
+      print('Failed to load borrowed tools: $e');
       state = state.copyWith(
         borrowedTools: [],
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -146,13 +167,10 @@ class LendingNotifier extends StateNotifier<LendingState> {
 
   Future<bool> createBorrowRequest(String toolId, {String? message}) async {
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // await _apiService.post(
-      //   '/sharing/tools/$toolId/request',
-      //   data: message != null ? {'message': message} : null,
-      // );
+      await _apiService.post(
+        '/api/sharing/tools/$toolId/request',
+        data: message != null ? {'message': message} : null,
+      );
 
       await loadOutgoingRequests();
       return true;
@@ -164,13 +182,10 @@ class LendingNotifier extends StateNotifier<LendingState> {
 
   Future<bool> respondToRequest(String requestId, {required bool approve, String? message}) async {
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // await _apiService.post(
-      //   '/sharing/requests/$requestId/respond',
-      //   data: {'approve': approve, 'message': message},
-      // );
+      await _apiService.post(
+        '/api/sharing/requests/$requestId/respond',
+        data: {'approve': approve, if (message != null) 'message': message},
+      );
 
       await loadIncomingRequests();
       await loadLentOutTools();
@@ -183,10 +198,7 @@ class LendingNotifier extends StateNotifier<LendingState> {
 
   Future<bool> returnTool(String requestId) async {
     try {
-      // TODO: Replace with actual API call
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // await _apiService.post('/sharing/requests/$requestId/return');
+      await _apiService.post('/api/sharing/requests/$requestId/return');
 
       await loadBorrowedTools();
       await loadLentOutTools();
@@ -210,91 +222,43 @@ final lendingStateProvider = StateNotifierProvider<LendingNotifier, LendingState
 
 // Provider for fetching another user's public toolboxes
 final userToolboxesProvider = FutureProvider.family<List<Toolbox>, String>((ref, userId) async {
-  // TODO: Replace with actual API call
-  await Future.delayed(const Duration(milliseconds: 500));
+  final api = ref.watch(apiServiceProvider);
 
-  // Simulated data for development
-  return [
-    Toolbox(
-      id: 'tb1',
-      userId: userId,
-      name: 'Power Tools',
-      description: 'My collection of power tools',
-      visibility: ToolboxVisibility.public,
-      toolCount: 5,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      updatedAt: DateTime.now(),
-    ),
-    Toolbox(
-      id: 'tb2',
-      userId: userId,
-      name: 'Garden Equipment',
-      description: 'Lawn mowers, trimmers, etc.',
-      visibility: ToolboxVisibility.public,
-      toolCount: 3,
-      createdAt: DateTime.now().subtract(const Duration(days: 60)),
-      updatedAt: DateTime.now(),
-    ),
-  ];
+  try {
+    final response = await api.get('/api/users/$userId/toolboxes');
+
+    final items = response['items'] as List? ?? [];
+    return items.map((e) => Toolbox.fromJson(e as Map<String, dynamic>)).toList();
+  } catch (e) {
+    print('Failed to load user toolboxes: $e');
+    return [];
+  }
 });
 
 // Provider for fetching tools in a user's toolbox
 final toolboxToolsProvider = FutureProvider.family<List<Tool>, String>((ref, toolboxId) async {
-  // TODO: Replace with actual API call
-  await Future.delayed(const Duration(milliseconds: 500));
+  final api = ref.watch(apiServiceProvider);
 
-  // Simulated data for development
-  return [
-    Tool(
-      id: 't1',
-      toolboxId: toolboxId,
-      name: 'DeWalt Circular Saw',
-      description: '7-1/4" circular saw, great for cutting lumber',
-      brand: 'DeWalt',
-      category: 'Power Saw',
-      isAvailable: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      updatedAt: DateTime.now(),
-    ),
-    Tool(
-      id: 't2',
-      toolboxId: toolboxId,
-      name: 'Makita Drill',
-      description: '18V cordless drill with 2 batteries',
-      brand: 'Makita',
-      category: 'Drill',
-      isAvailable: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      updatedAt: DateTime.now(),
-    ),
-    Tool(
-      id: 't3',
-      toolboxId: toolboxId,
-      name: 'Bosch Jigsaw',
-      description: 'Variable speed jigsaw',
-      brand: 'Bosch',
-      category: 'Power Saw',
-      isAvailable: false,
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-      updatedAt: DateTime.now(),
-    ),
-  ];
+  try {
+    final response = await api.get('/api/toolboxes/$toolboxId/tools');
+
+    final items = response['items'] as List? ?? [];
+    return items.map((e) => Tool.fromJson(e as Map<String, dynamic>)).toList();
+  } catch (e) {
+    print('Failed to load toolbox tools: $e');
+    return [];
+  }
 });
 
-// Provider for fetching user profile with toolbox info
-final userProfileProvider = FutureProvider.family<User, String>((ref, userId) async {
-  // TODO: Replace with actual API call
-  await Future.delayed(const Duration(milliseconds: 500));
+// Provider for fetching user profile
+final userProfileProvider = FutureProvider.family<User?, String>((ref, userId) async {
+  final api = ref.watch(apiServiceProvider);
 
-  // Simulated data for development
-  return User(
-    id: userId,
-    username: 'john_doe',
-    displayName: 'John Doe',
-    bio: 'Tool enthusiast and DIY expert',
-    followersCount: 128,
-    followingCount: 45,
-    isFollowing: false,
-    isBuddy: false,
-  );
+  try {
+    final response = await api.get('/api/users/$userId');
+    return User.fromJson(response);
+  } catch (e) {
+    print('Failed to load user profile: $e');
+    return null;
+  }
 });

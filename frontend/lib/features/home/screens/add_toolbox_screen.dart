@@ -4,11 +4,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/toolbox.dart';
+import '../../../core/services/api_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/funny_snackbar.dart';
+import '../providers/toolbox_provider.dart';
 
 class AddToolboxScreen extends ConsumerStatefulWidget {
   const AddToolboxScreen({super.key});
@@ -71,12 +73,35 @@ class _AddToolboxScreenState extends ConsumerState<AddToolboxScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Call API to create toolbox
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.post('/api/toolboxes', data: {
+        'name': _nameController.text.trim(),
+        'description': _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        'visibility': _visibility.name,
+        'icon': _selectedIcon,
+        'color': _selectedColor,
+      });
 
-    if (mounted) {
-      FunnySnackBar.toolboxCreated(context);
-      context.go('/home');
+      // Invalidate toolboxes cache to refresh the list
+      ref.invalidate(toolboxesProvider);
+
+      if (mounted) {
+        FunnySnackBar.toolboxCreated(context);
+        context.go('/home');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create toolbox: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
