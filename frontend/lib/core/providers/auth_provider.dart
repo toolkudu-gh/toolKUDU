@@ -61,17 +61,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
 
   AuthNotifier(this._authService) : super(const AuthState()) {
-    _checkAuthStatus();
+    // Defer auth check to avoid modifying state during build phase
+    Future.microtask(_checkAuthStatus);
   }
 
   Future<void> _checkAuthStatus() async {
+    // Skip if already disposed
+    if (!mounted) return;
+
     state = state.copyWith(isLoading: true);
 
     try {
       final isAuthenticated = await _authService.isAuthenticated();
+      if (!mounted) return;
+
       if (isAuthenticated) {
         final tokens = await _authService.getTokens();
         final user = await _authService.getCurrentUser();
+        if (!mounted) return;
+
         state = AuthState(
           isAuthenticated: true,
           isLoading: false,
@@ -82,6 +90,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = const AuthState(isLoading: false);
       }
     } catch (e) {
+      if (!mounted) return;
       state = AuthState(isLoading: false, error: e.toString());
     }
   }
@@ -282,6 +291,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? handshakeToken,
     String? code,
   }) async {
+    if (!mounted) return false;
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -292,8 +302,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         code: code,
       );
 
+      if (!mounted) return false;
+
       if (result['success'] == true) {
         final user = await _authService.getCurrentUser();
+        if (!mounted) return false;
+
         state = AuthState(
           isAuthenticated: true,
           isLoading: false,
