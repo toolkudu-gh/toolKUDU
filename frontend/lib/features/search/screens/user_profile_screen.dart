@@ -66,11 +66,13 @@ class UserProfileScreen extends ConsumerWidget {
                   userAsync.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
-                    data: (user) => AppIconButton(
-                      icon: Icons.share_outlined,
-                      tooltip: 'Share Profile',
-                      onPressed: () => _shareProfile(context, user.username),
-                    ),
+                    data: (user) => user == null
+                        ? const SizedBox.shrink()
+                        : AppIconButton(
+                            icon: Icons.share_outlined,
+                            tooltip: 'Share Profile',
+                            onPressed: () => _shareProfile(context, user.username),
+                          ),
                   ),
                 ],
               ),
@@ -83,7 +85,14 @@ class UserProfileScreen extends ConsumerWidget {
                   title: 'Failed to load profile',
                   description: error.toString(),
                 ),
-                data: (user) => SingleChildScrollView(
+                data: (user) {
+                  if (user == null) {
+                    return EmptyState.error(
+                      title: 'User not found',
+                      description: 'This user does not exist',
+                    );
+                  }
+                  return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
@@ -282,7 +291,8 @@ class UserProfileScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                ),
+                );
+                },
               ),
             ),
           ],
