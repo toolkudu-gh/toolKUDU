@@ -280,54 +280,65 @@ class ClerkAuthService {
     String? sessionToken,
   }) async {
     try {
-      // If we have a session token directly, use it
-      if (sessionToken != null && sessionToken.isNotEmpty) {
-        await _saveSession(
-          sessionToken: sessionToken,
-          userData: {},
-        );
+      String? jwt;
+      Map<String, dynamic> userData = {};
 
-        // Sync with backend to get/create user
-        final syncResult = await _syncUserWithBackend();
+      // If we have a session token that looks like a JWT (starts with ey), use it directly
+      if (sessionToken != null && sessionToken.startsWith('ey')) {
+        jwt = sessionToken;
+      }
+      // If we have a session ID, get the JWT from Clerk
+      else if (sessionId != null && sessionId.isNotEmpty) {
+        // Get JWT token from Clerk's session token endpoint
+        try {
+          final tokenResponse = await _clerkApi.post(
+            '$_clerkFrontendApi/v1/sessions/$sessionId/tokens',
+          );
 
+          if (tokenResponse.statusCode == 200) {
+            jwt = tokenResponse.data['jwt'] as String?;
+          }
+        } catch (e) {
+          print('Failed to get JWT from session: $e');
+        }
+
+        // Also try to get user data from session
+        try {
+          final sessionResponse = await _clerkApi.get(
+            '$_clerkFrontendApi/v1/sessions/$sessionId',
+          );
+          if (sessionResponse.statusCode == 200) {
+            userData = sessionResponse.data['user'] as Map<String, dynamic>? ?? {};
+          }
+        } catch (e) {
+          print('Failed to get session details: $e');
+        }
+      }
+      // Try using the session token as-is (might work for some Clerk configurations)
+      else if (sessionToken != null && sessionToken.isNotEmpty) {
+        jwt = sessionToken;
+      }
+
+      if (jwt == null || jwt.isEmpty) {
         return {
-          'success': true,
-          'accessToken': sessionToken,
-          'user': syncResult,
-          'isNewUser': syncResult?['isNewUser'] ?? false,
+          'success': false,
+          'error': 'Could not obtain authentication token from Clerk',
         };
       }
 
-      // If we have a session ID, we need to get the session token
-      if (sessionId != null && sessionId.isNotEmpty) {
-        // Get session details from Clerk
-        final response = await _clerkApi.get(
-          '$_clerkFrontendApi/v1/sessions/$sessionId',
-        );
+      await _saveSession(
+        sessionToken: jwt,
+        userData: userData,
+      );
 
-        if (response.statusCode == 200) {
-          final data = response.data;
-          final token = data['client_token'] ?? data['session_token'] ?? sessionId;
-
-          await _saveSession(
-            sessionToken: token,
-            userData: data['user'] ?? {},
-          );
-
-          final syncResult = await _syncUserWithBackend();
-
-          return {
-            'success': true,
-            'accessToken': token,
-            'user': syncResult ?? data['user'],
-            'isNewUser': syncResult?['isNewUser'] ?? false,
-          };
-        }
-      }
+      // Sync with backend to get/create user
+      final syncResult = await _syncUserWithBackend();
 
       return {
-        'success': false,
-        'error': 'Invalid OAuth callback - missing session token',
+        'success': true,
+        'accessToken': jwt,
+        'user': syncResult ?? userData,
+        'isNewUser': syncResult?['isNewUser'] ?? false,
       };
     } on DioException catch (e) {
       return _handleDioError(e, 'OAuth callback failed');

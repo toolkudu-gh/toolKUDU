@@ -75,10 +75,42 @@ userRoutes.get('/check-username', async (req: Request, res: Response, next: Next
 });
 
 // POST /api/users/sync - Sync user from Clerk to database
-userRoutes.post('/sync', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+// This endpoint creates/updates a user based on their Clerk authentication
+userRoutes.post('/sync', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const auth = (req as any).auth;
-    const clerkUserId = auth?.userId;
+    const { getAuth } = await import('@clerk/express');
+    const auth = getAuth(req);
+    let clerkUserId = auth?.userId;
+
+    // If no userId from Clerk middleware, check for session ID in Authorization header
+    if (!clerkUserId) {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+
+        // If it looks like a Clerk session ID, try to get the session
+        if (token.startsWith('sess_')) {
+          try {
+            const session = await clerkClient.sessions.getSession(token);
+            clerkUserId = session.userId;
+          } catch (sessionError) {
+            console.error('Session lookup failed:', sessionError);
+          }
+        }
+      }
+    }
+
+    // If still no user ID, return 401 with helpful message
+    if (!clerkUserId) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'Please sign in with Clerk to sync your account',
+        debug: {
+          hasAuthHeader: !!req.headers.authorization,
+          authInfo: auth ? 'present' : 'missing',
+        }
+      });
+    }
 
     if (!clerkUserId) {
       throw badRequest('No Clerk user ID found');
