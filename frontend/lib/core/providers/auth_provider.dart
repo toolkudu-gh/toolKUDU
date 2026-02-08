@@ -275,6 +275,43 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // Handle OAuth Callback (from Clerk redirect)
+  Future<bool> handleOAuthCallback({
+    String? sessionToken,
+    String? sessionId,
+    String? code,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final result = await _authService.handleOAuthCallback(
+        sessionToken: sessionToken,
+        sessionId: sessionId,
+        code: code,
+      );
+
+      if (result['success'] == true) {
+        final user = await _authService.getCurrentUser();
+        state = AuthState(
+          isAuthenticated: true,
+          isLoading: false,
+          user: user,
+          accessToken: result['accessToken'],
+        );
+        return true;
+      } else {
+        state = AuthState(
+          isLoading: false,
+          error: result['error'] ?? 'OAuth authentication failed',
+        );
+        return false;
+      }
+    } catch (e) {
+      state = AuthState(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
   void updateUser(User user) {
     state = state.copyWith(user: user);
   }

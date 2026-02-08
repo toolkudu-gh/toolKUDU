@@ -6,6 +6,7 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
 import '../features/auth/screens/magic_link_screen.dart';
+import '../features/auth/screens/oauth_callback_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/home/screens/toolbox_detail_screen.dart';
 import '../features/home/screens/tool_detail_screen.dart';
@@ -62,7 +63,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/magic-link' ||
-          state.matchedLocation.startsWith('/verify-email');
+          state.matchedLocation.startsWith('/verify-email') ||
+          state.matchedLocation.startsWith('/auth/callback');
 
       // If not logged in and not on auth routes, redirect to login
       if (!isLoggedIn && !isAuthRoute) {
@@ -105,6 +107,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/magic-link',
         name: 'magic-link',
         builder: (context, state) => const MagicLinkScreen(),
+      ),
+      GoRoute(
+        path: '/auth/callback',
+        name: 'auth-callback',
+        builder: (context, state) {
+          // Extract OAuth callback parameters from URL
+          final queryParams = state.uri.queryParameters;
+          return OAuthCallbackScreen(
+            sessionToken: queryParams['__clerk_session_token'] ?? queryParams['session_token'],
+            sessionId: queryParams['__clerk_session_id'] ?? queryParams['session_id'],
+            code: queryParams['code'],
+            error: queryParams['error'],
+          );
+        },
       ),
 
       // Main app shell with bottom navigation

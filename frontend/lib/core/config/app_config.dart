@@ -23,9 +23,11 @@ class AppConfig {
   static bool get isProduction => apiBaseUrl.contains('railway.app');
   static bool get isDevelopment => !isProduction;
 
-  // Feature flags
-  static const bool enableMockAuth = bool.fromEnvironment(
-    'ENABLE_MOCK_AUTH',
-    defaultValue: false, // Use real backend - mock auth disabled in production
-  );
+  // Web base URL for OAuth redirects
+  static String get webBaseUrl {
+    if (isProduction) {
+      return 'https://toolkudu-web-production.up.railway.app';
+    }
+    return 'http://localhost:3000';
+  }
 }

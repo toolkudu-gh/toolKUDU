@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-// Require authentication
+// Require authentication (Clerk)
 export const authenticate = requireAuth();
 
 // Get user ID from database (after Clerk auth)
