@@ -3,6 +3,7 @@ import { clerkClient } from '@clerk/express';
 import { query, queryOne, queryReturning } from '../db';
 import { requireUser, optionalAuth, authenticate, attachUserId } from '../middleware/auth';
 import { badRequest, notFound } from '../middleware/errorHandler';
+import { syncLimiter, searchLimiter, authLimiter } from '../middleware/rateLimit';
 import { isValidUUID } from '../utils/validation';
 import { getPagination, paginate } from '../utils/pagination';
 import { User, UserProfile, Toolbox, Tool, ToolResponse } from '../models/types';
@@ -30,7 +31,7 @@ function toUserProfile(
 }
 
 // GET /api/users/check-username - Check if username is available (no auth required)
-userRoutes.get('/check-username', async (req: Request, res: Response, next: NextFunction) => {
+userRoutes.get('/check-username', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const username = req.query.username as string;
 
@@ -76,7 +77,7 @@ userRoutes.get('/check-username', async (req: Request, res: Response, next: Next
 
 // POST /api/users/sync - Sync user from Clerk to database
 // This endpoint creates/updates a user based on their Clerk authentication
-userRoutes.post('/sync', async (req: Request, res: Response, next: NextFunction) => {
+userRoutes.post('/sync', syncLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { getAuth } = await import('@clerk/express');
     const auth = getAuth(req);
@@ -100,15 +101,11 @@ userRoutes.post('/sync', async (req: Request, res: Response, next: NextFunction)
       }
     }
 
-    // If still no user ID, return 401 with helpful message
+    // If still no user ID, return 401
     if (!clerkUserId) {
       return res.status(401).json({
         error: 'Authentication required',
-        message: 'Please sign in with Clerk to sync your account',
-        debug: {
-          hasAuthHeader: !!req.headers.authorization,
-          authInfo: auth ? 'present' : 'missing',
-        }
+        message: 'Please sign in to sync your account',
       });
     }
 
@@ -152,7 +149,7 @@ userRoutes.post('/sync', async (req: Request, res: Response, next: NextFunction)
     }
 
     // Create new user
-    const username = generateUsername(email);
+    const username = await generateUsername(email);
     const displayName = clerkUser.firstName
       ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim()
       : username;
@@ -369,7 +366,7 @@ userRoutes.get('/me/following', requireUser, async (req: Request, res: Response,
 });
 
 // GET /api/users/search - Search users
-userRoutes.get('/search', requireUser, async (req: Request, res: Response, next: NextFunction) => {
+userRoutes.get('/search', searchLimiter, requireUser, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const searchQuery = req.query.q as string;
     const { page, pageSize, offset } = getPagination(req);
@@ -671,8 +668,25 @@ userRoutes.get('/:userId/toolboxes', optionalAuth, async (req: Request, res: Res
 });
 
 // Helper: Generate username from email
-function generateUsername(email: string): string {
-  const base = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+// Per CLAUDE.md: "Google/Magic Link users get username from email prefix"
+// Only adds suffix if base username is already taken
+async function generateUsername(email: string): Promise<string> {
+  // Clean the email prefix: remove special chars (not underscore) and lowercase
+  const base = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+  // Ensure minimum 3 characters
+  const padded = base.length < 3 ? base + 'user' : base;
+
+  // Check if base username is available
+  const existing = await queryOne(
+    'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)',
+    [padded]
+  );
+
+  if (!existing) {
+    return padded;
+  }
+
+  // Add random suffix if taken
   const suffix = Math.floor(Math.random() * 1000);
-  return `${base}_${suffix}`;
+  return `${padded}_${suffix}`;
 }

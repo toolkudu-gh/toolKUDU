@@ -295,9 +295,11 @@ class ClerkAuthService {
         }
 
         // Fallback: Use Clerk's Account Portal hosted sign-in page
+        // Include prompt=select_account to force account picker even when logged in
         final encodedRedirect = Uri.encodeComponent(redirectUrl);
         final clerkSignInUrl = '$_clerkAccountPortal/sign-in'
-            '?redirect_url=$encodedRedirect';
+            '?redirect_url=$encodedRedirect'
+            '&prompt=select_account';
         print('[Auth] Redirecting to Account Portal: $clerkSignInUrl');
         platform.redirectTo(clerkSignInUrl);
         return {'success': true, 'redirecting': true};
@@ -470,22 +472,41 @@ class ClerkAuthService {
         }
       }
 
-      // Priority 5: Last resort - use session token as-is
-      if (jwt == null && sessionToken != null && sessionToken.isNotEmpty) {
-        print('[OAuthHandler] Priority 5: Using session token as-is (last resort)');
-        jwt = sessionToken;
-      }
+      // REMOVED Priority 5: We should NEVER send non-JWT tokens (like dvb_*) to the backend
+      // Dev tokens are session identifiers, NOT JWTs. The backend will reject them.
+      // If we reach here without a valid JWT, the authentication has failed.
 
       if (jwt == null || jwt.isEmpty) {
         print('[OAuthHandler] FAILED: No JWT obtained from any source');
         print('[OAuthHandler] ========== OAUTH CALLBACK END (FAILED) ==========');
+
+        // Provide a helpful error message based on what went wrong
+        String errorMessage = 'Could not complete authentication. ';
+        if (sessionToken != null && sessionToken.startsWith('dvb_')) {
+          errorMessage += 'The Clerk SDK failed to load properly. Please refresh the page and try again.';
+        } else {
+          errorMessage += 'Please try signing in again.';
+        }
+
         return {
           'success': false,
-          'error': 'Could not obtain authentication token from Clerk',
+          'error': errorMessage,
         };
       }
 
-      print('[OAuthHandler] SUCCESS: Got JWT (${jwt.length} chars)');
+      // Validate that we actually have a JWT (should start with 'ey')
+      if (!jwt.startsWith('ey')) {
+        print('[OAuthHandler] FAILED: Token is not a valid JWT format');
+        final jwtPreviewLen = jwt.length < 10 ? jwt.length : 10;
+        print('[OAuthHandler] Token starts with: ${jwt.substring(0, jwtPreviewLen)}...');
+        print('[OAuthHandler] ========== OAUTH CALLBACK END (FAILED) ==========');
+        return {
+          'success': false,
+          'error': 'Invalid authentication token format. Please refresh and try again.',
+        };
+      }
+
+      print('[OAuthHandler] SUCCESS: Got valid JWT (${jwt.length} chars)');
       print('[OAuthHandler] Saving session...');
       await _saveSession(
         sessionToken: jwt,
@@ -496,14 +517,25 @@ class ClerkAuthService {
       // Sync with backend to get/create user
       print('[OAuthHandler] Syncing with backend...');
       final syncResult = await _syncUserWithBackend();
-      print('[OAuthHandler] Backend sync result: ${syncResult != null ? "success" : "failed/null"}');
 
+      if (syncResult == null) {
+        print('[OAuthHandler] Backend sync FAILED - clearing session');
+        print('[OAuthHandler] ========== OAUTH CALLBACK END (SYNC FAILED) ==========');
+        // Clear the invalid session to prevent the app from thinking we're logged in
+        await clearSession();
+        return {
+          'success': false,
+          'error': 'Could not sync your account with the server. Please try again.',
+        };
+      }
+
+      print('[OAuthHandler] Backend sync SUCCESS: userId=${syncResult['id']}');
       print('[OAuthHandler] ========== OAUTH CALLBACK END (SUCCESS) ==========');
       return {
         'success': true,
         'accessToken': jwt,
-        'user': syncResult ?? userData,
-        'isNewUser': syncResult?['isNewUser'] ?? false,
+        'user': syncResult,
+        'isNewUser': syncResult['isNewUser'] ?? false,
       };
     } on DioException catch (e) {
       print('[OAuthHandler] DioException: ${e.message}');
@@ -733,25 +765,48 @@ class ClerkAuthService {
   }
 
   /// Sync user with backend - calls /api/users/sync with Clerk token
+  /// Returns the backend user data on success, null on failure
   Future<Map<String, dynamic>?> _syncUserWithBackend() async {
     try {
       final sessionToken = await getSessionToken();
-      if (sessionToken == null) return null;
+      if (sessionToken == null) {
+        print('[BackendSync] No session token available');
+        return null;
+      }
+
+      // Validate token format before sending
+      if (!sessionToken.startsWith('ey')) {
+        print('[BackendSync] Invalid token format - not a JWT');
+        final previewLen = sessionToken.length < 10 ? sessionToken.length : 10;
+        print('[BackendSync] Token starts with: ${sessionToken.substring(0, previewLen)}...');
+        return null;
+      }
 
       _backendApi.options.headers['Authorization'] = 'Bearer $sessionToken';
 
+      print('[BackendSync] Calling POST /api/users/sync...');
       final response = await _backendApi.post('/api/users/sync');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final backendUser = response.data as Map<String, dynamic>;
+        print('[BackendSync] Success - user ID: ${backendUser['id']}');
         // Update stored user data with backend response
         await storage.write(key: _userDataKey, value: jsonEncode(backendUser));
         return backendUser;
       }
+
+      print('[BackendSync] Unexpected status code: ${response.statusCode}');
+      return null;
+    } on DioException catch (e) {
+      print('[BackendSync] DioException: ${e.type}');
+      print('[BackendSync] Status: ${e.response?.statusCode}');
+      print('[BackendSync] Message: ${e.message}');
+      if (e.response?.data != null) {
+        print('[BackendSync] Response: ${e.response?.data}');
+      }
       return null;
     } catch (e) {
-      // Silently fail - user can still use the app
-      print('Failed to sync user with backend: $e');
+      print('[BackendSync] Error: $e');
       return null;
     }
   }

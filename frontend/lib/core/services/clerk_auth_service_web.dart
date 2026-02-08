@@ -19,7 +19,7 @@ void redirectTo(String url) {
 }
 
 /// Wait for Clerk JS SDK to load and initialize
-Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 10)}) async {
+Future<bool> waitForClerk({Duration timeout = const Duration(seconds: 15)}) async {
   final stopwatch = Stopwatch()..start();
 
   while (stopwatch.elapsed < timeout) {

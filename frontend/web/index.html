@@ -32,6 +32,9 @@
   <title>toolkudu</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- Preload Clerk JS SDK for faster OAuth initialization -->
+  <link rel="preload" href="https://cdn.clerk.com/clerk.browser.js" as="script" crossorigin="anonymous">
+
   <!-- Clerk JS SDK -->
   <script
     async
