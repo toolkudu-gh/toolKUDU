@@ -86,6 +86,48 @@ class ClerkAuthService {
     return token != null && token.isNotEmpty;
   }
 
+  /// Check if Clerk JS SDK has an active session (web only)
+  /// Used as fallback when secure storage is empty but browser cookies exist
+  Future<Map<String, dynamic>> checkClerkSdkSession() async {
+    if (!kIsWeb) return {'success': false};
+
+    try {
+      print('[Auth] Checking Clerk SDK for existing session...');
+      final loaded = await platform.waitForClerk(timeout: const Duration(seconds: 10));
+      if (!loaded) {
+        print('[Auth] Clerk SDK not loaded, no session');
+        return {'success': false};
+      }
+
+      final hasSession = platform.hasClerkSession();
+      if (!hasSession) {
+        print('[Auth] Clerk SDK loaded but no active session');
+        return {'success': false};
+      }
+
+      // SDK has a session — get the JWT and user data
+      final jwt = await platform.getClerkSessionToken();
+      if (jwt == null || jwt.isEmpty) {
+        print('[Auth] Clerk SDK session exists but could not get JWT');
+        return {'success': false};
+      }
+
+      final clerkUser = platform.getClerkUser();
+      final userData = clerkUser ?? {};
+
+      print('[Auth] Clerk SDK session found, saving to storage...');
+      await _saveSession(sessionToken: jwt, userData: userData);
+
+      // Sync with backend
+      await _syncUserWithBackend();
+
+      return {'success': true, 'accessToken': jwt};
+    } catch (e) {
+      print('[Auth] Error checking Clerk SDK session: $e');
+      return {'success': false};
+    }
+  }
+
   /// Get current session token
   Future<String?> getSessionToken() async {
     return await storage.read(key: _sessionTokenKey);

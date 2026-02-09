@@ -83,6 +83,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      // Fast path: check secure storage first
       final isAuthenticated = await _authService.isAuthenticated();
       if (!mounted) return;
 
@@ -97,9 +98,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           accessToken: tokens?['accessToken'],
         );
-      } else {
-        state = const AuthState(isLoading: false);
+        return;
       }
+
+      // Fallback: storage is empty, but Clerk SDK may have a session from browser cookies
+      final sdkResult = await _authService.checkClerkSdkSession();
+      if (!mounted) return;
+
+      if (sdkResult['success'] == true) {
+        final user = await _authService.getCurrentUser();
+        if (!mounted) return;
+
+        state = AuthState(
+          isAuthenticated: true,
+          isLoading: false,
+          user: user,
+          accessToken: sdkResult['accessToken'],
+        );
+        return;
+      }
+
+      // Neither storage nor SDK has a session — user is unauthenticated
+      state = const AuthState(isLoading: false);
     } catch (e) {
       if (!mounted) return;
       state = AuthState(isLoading: false, error: e.toString());
@@ -219,6 +239,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Google Sign-In
   Future<bool> signInWithGoogle() async {
     state = state.copyWith(isLoading: true, error: null, isOAuthRedirecting: true);
+
+    // Give Flutter a frame to paint the "Redirecting to Google..." overlay
+    await Future.delayed(const Duration(milliseconds: 50));
 
     try {
       final result = await _authService.signInWithGoogle();

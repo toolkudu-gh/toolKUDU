@@ -86,6 +86,10 @@ class AuthService {
     return tokens?['accessToken'];
   }
 
+  Future<Map<String, dynamic>> checkClerkSdkSession() async {
+    return await _clerkAuth.checkClerkSdkSession();
+  }
+
   Future<Map<String, dynamic>> resendConfirmationCode(String email) async {
     return await _clerkAuth.resendVerificationCode(email);
   }
